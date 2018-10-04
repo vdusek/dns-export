@@ -9,12 +9,12 @@
 #include <iostream>
 #include <stdexcept>
 #include <getopt.h>
-#include "error.h"
-#include "config.h"
+#include "utils.h"
+#include "arg_parser.h"
 
 using namespace std;
 
-Config::Config():
+ArgParser::ArgParser():
     resource(""),
     interface(""),
     server(""),
@@ -23,41 +23,36 @@ Config::Config():
 {
 }
 
-Config::~Config()
+ArgParser::~ArgParser()
 {
 }
 
-std::string Config::get_resource()
+std::string ArgParser::get_resource()
 {
     return this->resource;
 }
 
-std::string Config::get_interface()
+std::string ArgParser::get_interface()
 {
     return this->interface;
 }
 
-std::string Config::get_server()
+std::string ArgParser::get_server()
 {
     return this->server;
 }
 
-int Config::get_timeout()
+int ArgParser::get_timeout()
 {
     return this->timeout;
 }
 
-bool Config::get_help()
+bool ArgParser::get_help()
 {
     return this->help;
 }
 
-void Config::print_help()
-{
-    cout << HELP_TEXT << endl;
-}
-
-void Config::print_arguments()
+void ArgParser::print()
 {
     cerr << "Configuration:" << endl;
     cerr << "    resource = " << this->resource << endl;
@@ -68,7 +63,7 @@ void Config::print_arguments()
     cerr << endl;
 }
 
-void Config::parse_arguments(int argc, char *argv[])
+void ArgParser::parse(int argc, char **argv)
 {
     if (argc > 10)
         throw ArgumentException("invalid argument\n"

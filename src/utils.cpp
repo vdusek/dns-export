@@ -6,13 +6,19 @@
 // Date: 30/9/2018
 // File: error.cpp
 
-#include "error.h"
+#include "utils.h"
 #include <iostream>
 #include <string>
 
 using namespace std;
 
-void error(Ret_code ret_code, string message)
+
+void print_help()
+{
+    cout << HELP_TEXT << endl;
+}
+
+void error(RetCode ret_code, string message)
 {
     cerr << message << endl;
     exit(ret_code);

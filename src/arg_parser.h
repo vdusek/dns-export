@@ -12,21 +12,9 @@
 #include <string>
 
 /**
- * Help text
+ * Parser of command line arguments.
  */
-const std::string HELP_TEXT = "Usage:\n"
-    "$ ./dns-export [-r file.pcap] [-i interface] [-s syslog-server] [-t seconds] [-h]\n"
-    "    -r, --resource         description ToDo\n"
-    "    -i, --interface        description ToDO\n"
-    "    -s, --server           description ToDo\n"
-    "    -t, --timeout          value of timeout in seconds\n"
-    "    -h, --help             print this help";
-
-/**
- * Parsing command line options. Print help on stdout if it is required or
- * call error() if there is a problem.
- */
-class Config {
+class ArgParser {
 private:
     std::string resource;
     std::string interface;
@@ -38,12 +26,12 @@ public:
     /**
      * Constructor, set all attributes to default values.
      */
-    Config();
+    ArgParser();
 
     /**
      * Destructor.
      */
-    ~Config();
+    ~ArgParser();
 
     /**
      * Get resource arg
@@ -73,15 +61,10 @@ public:
     /**
      * Parse command line arguments.
      */
-    void parse_arguments(int argc, char *argv[]);
-
-    /**
-     * Print help on stdout.
-     */
-    void print_help();
+    void parse(int argc, char **argv);
 
     /**
      * Print all attributes on stderr for purpose of debugging.
      */
-    void print_arguments();
+    void print();
 };

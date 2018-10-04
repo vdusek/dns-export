@@ -16,11 +16,10 @@
 CPPC = g++
 CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic
 DEPS = dep.list
-SRC = main.cpp config.cpp error.cpp
-H = config.h error.h
+SRC = main.cpp arg_parser.cpp utils.cpp pcap_parser.cpp
 OBJ = $(SRC:.cpp=.o)
 EXEC = dns-export
-ARCHIVE = xdusek27.zip
+ARCHIVE = xdusek27.tar
 
 .PHONY: all clean clean-all pack
 
@@ -40,9 +39,5 @@ $(EXEC): $(OBJ)
 clean:
 	rm -f $(OBJ) $(DEPS)
 
-# add $(ARCHIVE)
 clean-all:
 	rm -f $(OBJ) $(DEPS) $(EXEC)
-
-pack:
-	zip $(ARCHIVE) $(SRC) $(H) Makefile

@@ -6,34 +6,46 @@
 // Date: 30/9/2018
 // File: main.cpp
 
+// NOTES:
+// libpcap - knihovna na zpracovavani .pcap souboru
+
 #include <iostream>
 #include <string>
-#include "error.h"
-#include "config.h"
+#include "utils.h"
+#include "arg_parser.h"
+#include "pcap_parser.h"
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    Config cfg;
+    ArgParser arg_parser;
     try {
-        cfg.parse_arguments(argc, argv);
+        arg_parser.parse(argc, argv);
     }
     catch (ArgumentException &exc) {
         error(RET_INV_ARGS, "dns-export: " + string(exc.what()));
     }
 
     // Debug
-    cfg.print_arguments();
+    arg_parser.print();
 
-    if (cfg.get_help()) {
-        cfg.print_help();
+    if (arg_parser.get_help()) {
+        print_help();
         return 0;
     }
 
-    // ToDo
+    if (arg_parser.get_resource() != "") {
+        PcapParser pcap_parser(arg_parser.get_resource());
+        pcap_parser.parse();
+    }
 
-    // ToDo - nastavit IDE, vsechny bile znaky jako mezera (space)
+
+
+    // ToDo:
+    // - nastudovat pcap soubory
+    // - vytvorit nejaky testovaci
+    // - pokusit se je zpracovat
 
     return 0;
 }
