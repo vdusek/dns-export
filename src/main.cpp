@@ -15,23 +15,25 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	Config cfg;
-	try {
-		cfg.parse_arguments(argc, argv);
-	}
-	catch (ArgumentException &exc) {
+    Config cfg;
+    try {
+        cfg.parse_arguments(argc, argv);
+    }
+    catch (ArgumentException &exc) {
         error(RET_INV_OPTS, "dns-export: " + string(exc.what()));
-	}
+    }
 
-	// Debug
-	cfg.print_arguments();
+    // Debug
+    cfg.print_arguments();
 
-	if (cfg.get_help()) {
-		cfg.print_help();
-		return 0;
-	}
+    if (cfg.get_help()) {
+        cfg.print_help();
+        return 0;
+    }
 
-	// ToDo
+    // ToDo
 
-	return 0;
+    // ToDo - nastavit IDE, vsechny bile znaky jako mezera (space)
+
+    return 0;
 }

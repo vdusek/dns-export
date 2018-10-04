@@ -14,7 +14,7 @@
 
 # -g flag for purpose of debugging
 CPPC = g++
-CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -g
+CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic
 DEPS = dep.list
 SRC = main.cpp config.cpp error.cpp
 H = config.h error.h

@@ -14,6 +14,6 @@ using namespace std;
 
 void error(Ret_code ret_code, string message)
 {
-	cerr << message << endl;
-	exit(ret_code);
+    cerr << message << endl;
+    exit(ret_code);
 }
