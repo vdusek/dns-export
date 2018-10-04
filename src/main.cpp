@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
         cfg.parse_arguments(argc, argv);
     }
     catch (ArgumentException &exc) {
-        error(RET_INV_OPTS, "dns-export: " + string(exc.what()));
+        error(RET_INV_ARGS, "dns-export: " + string(exc.what()));
     }
 
     // Debug

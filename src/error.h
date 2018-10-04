@@ -15,7 +15,7 @@
  * All types of return codes.
  */
 enum Ret_code {
-    RET_INV_OPTS = 1,   // invalid command line options
+    RET_INV_ARGS = 1,   // invalid command line options
     RET_SYS = 2         // system error (malloc, socket, etc.)
 };
 

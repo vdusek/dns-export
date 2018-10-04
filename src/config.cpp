@@ -15,9 +15,9 @@
 using namespace std;
 
 Config::Config():
-    resource(nullptr),
-    interface(nullptr),
-    server(nullptr),
+    resource(""),
+    interface(""),
+    server(""),
     timeout(60),
     help(false)
 {
@@ -27,17 +27,17 @@ Config::~Config()
 {
 }
 
-char *Config::get_resource()
+std::string Config::get_resource()
 {
     return this->resource;
 }
 
-char *Config::get_interface()
+std::string Config::get_interface()
 {
     return this->interface;
 }
 
-char *Config::get_server()
+std::string Config::get_server()
 {
     return this->server;
 }
@@ -59,25 +59,13 @@ void Config::print_help()
 
 void Config::print_arguments()
 {
-    cerr << "##### CONFIGURATION #####" << endl;
-    if (resource == nullptr)
-        cerr << "resource = 'nullptr'" << endl;
-    else
-        cerr << "resource = " << this->resource << endl;
-    if (interface == nullptr)
-        cerr << "interface = 'nullptr'" << endl;
-    else
-        cerr << "interface = " << this->interface << endl;
-    if (server == nullptr)
-        cerr << "server = 'nullptr'" << endl;
-    else
-        cerr << "server = " << this->server << endl;
-    cerr << "timeout = " << this->timeout << endl;
-    if (help)
-        cerr << "help = 'true'" << endl;
-    else
-        cerr << "help = 'false'" << endl;
-    cerr << "#########################" << endl;
+    cerr << "Configuration:" << endl;
+    cerr << "    resource = " << this->resource << endl;
+    cerr << "    interface = " << this->interface << endl;
+    cerr << "    server = " << this->server << endl;
+    cerr << "    timeout = " << this->timeout << endl;
+    cerr << "    help = " << this->help << endl;
+    cerr << endl;
 }
 
 void Config::parse_arguments(int argc, char *argv[])
@@ -103,6 +91,7 @@ void Config::parse_arguments(int argc, char *argv[])
          s_set = false,
          t_set = false,
          h_set = false;
+    opterr = 0; // turn off getopt messages
 
     while ((opt = getopt_long(argc, argv, "r:i:s:t:h", long_options, nullptr)) != EOF) {
         switch (opt) {
@@ -111,7 +100,7 @@ void Config::parse_arguments(int argc, char *argv[])
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 r_set = true;
-                this->resource = optarg;
+                this->resource = string(optarg);
                 break;
 
             case 'i':
@@ -119,7 +108,7 @@ void Config::parse_arguments(int argc, char *argv[])
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 i_set = true;
-                this->interface = optarg;
+                this->interface = string(optarg);
                 break;
 
             case 's':
@@ -127,7 +116,7 @@ void Config::parse_arguments(int argc, char *argv[])
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 s_set = true;
-                this->server = optarg;
+                this->server = string(optarg);
                 break;
 
             case 't':
@@ -161,7 +150,7 @@ void Config::parse_arguments(int argc, char *argv[])
                     "Try 'dns-export --help' for more information.");
 
             default:
-                throw ArgumentException("unexpected error\n"
+                throw ArgumentException("unexpected error during parsing arguments\n"
                     "Try 'dns-export --help' for more information.");
         }
     }

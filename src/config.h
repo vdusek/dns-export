@@ -9,6 +9,7 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 
 /**
  * Help text
@@ -27,9 +28,9 @@ const std::string HELP_TEXT = "Usage:\n"
  */
 class Config {
 private:
-    char *resource;
-    char *interface;
-    char *server;
+    std::string resource;
+    std::string interface;
+    std::string server;
     int timeout;
     bool help;
 
@@ -47,17 +48,17 @@ public:
     /**
      * Get resource arg
      */
-    char *get_resource();
+    std::string get_resource();
 
     /**
      * Get interface arg
      */
-    char *get_interface();
+    std::string get_interface();
 
     /**
      * Get resource arg
      */
-    char *get_server();
+    std::string get_server();
 
     /**
      * Get timeout arg
