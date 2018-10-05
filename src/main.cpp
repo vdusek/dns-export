@@ -6,9 +6,6 @@
 // Date: 30/9/2018
 // File: main.cpp
 
-// NOTES:
-// libpcap - knihovna na zpracovavani .pcap souboru
-
 #include <iostream>
 #include <string>
 #include "utils.h"
@@ -40,12 +37,7 @@ int main(int argc, char *argv[])
         pcap_parser.parse();
     }
 
-
-
     // ToDo:
-    // - nastudovat pcap soubory
-    // - vytvorit nejaky testovaci
-    // - pokusit se je zpracovat
 
     return 0;
 }

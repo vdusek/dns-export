@@ -8,6 +8,7 @@
 
 #include <string>
 #include <iostream>
+#include <pcap/pcap.h>
 #include "pcap_parser.h"
 
 using namespace std;
@@ -23,5 +24,11 @@ PcapParser::~PcapParser()
 
 void PcapParser::parse()
 {
-    std::cout << "parsuju " << this->filename << endl;
+    cout << "parsuju " << this->filename << endl;
+    char error_buffer[PCAP_ERRBUF_SIZE];
+
+    pcap_t *tmp = nullptr;
+    tmp = pcap_open_offline(this->filename.c_str(), error_buffer);
+
+    // ToDo
 }
