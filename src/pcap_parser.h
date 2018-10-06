@@ -9,10 +9,11 @@
 #pragma once
 
 #include <string>
+#include <pcap/pcap.h>
 
 class PcapParser {
 private:
-    std::string filename;
+    std::string m_filename;
 
 public:
     /**
