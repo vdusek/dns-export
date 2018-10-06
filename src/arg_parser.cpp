@@ -14,12 +14,14 @@
 
 using namespace std;
 
-ArgParser::ArgParser():
-    resource(""),
-    interface(""),
-    server(""),
-    timeout(60),
-    help(false)
+ArgParser::ArgParser(int argc, char **argv):
+    m_argc(argc),
+    m_argv(argv),
+    m_resource(""),
+    m_interface(""),
+    m_server(""),
+    m_timeout(60),
+    m_help(false)
 {
 }
 
@@ -29,48 +31,48 @@ ArgParser::~ArgParser()
 
 std::string ArgParser::get_resource()
 {
-    return this->resource;
+    return m_resource;
 }
 
 std::string ArgParser::get_interface()
 {
-    return this->interface;
+    return m_interface;
 }
 
 std::string ArgParser::get_server()
 {
-    return this->server;
+    return m_server;
 }
 
 int ArgParser::get_timeout()
 {
-    return this->timeout;
+    return m_timeout;
 }
 
 bool ArgParser::get_help()
 {
-    return this->help;
+    return m_help;
 }
 
 void ArgParser::print()
 {
     cerr << "Configuration:" << endl;
-    cerr << "    resource = " << this->resource << endl;
-    cerr << "    interface = " << this->interface << endl;
-    cerr << "    server = " << this->server << endl;
-    cerr << "    timeout = " << this->timeout << endl;
-    cerr << "    help = " << this->help << endl;
+    cerr << "    resource = " << m_resource << endl;
+    cerr << "    interface = " << m_interface << endl;
+    cerr << "    server = " << m_server << endl;
+    cerr << "    timeout = " << m_timeout << endl;
+    cerr << "    help = " << m_help << endl;
     cerr << endl;
 }
 
-void ArgParser::parse(int argc, char **argv)
+void ArgParser::parse()
 {
-    if (argc > 10)
+    if (m_argc > 9) {
         throw ArgumentException("invalid argument\n"
             "Try 'dns-export --help' for more information.");
+    }
 
-    struct option long_options[] =
-    {
+    struct option long_options[] = {
         {"resource", required_argument, nullptr, 'r'},
         {"interface", required_argument, nullptr, 'i'},
         {"server", required_argument, nullptr, 's'},
@@ -88,14 +90,14 @@ void ArgParser::parse(int argc, char **argv)
          h_set = false;
     opterr = 0; // turn off getopt messages
 
-    while ((opt = getopt_long(argc, argv, "r:i:s:t:h", long_options, nullptr)) != EOF) {
+    while ((opt = getopt_long(m_argc, m_argv, "r:i:s:t:h", long_options, nullptr)) != EOF) {
         switch (opt) {
             case 'r':
                 if (r_set)
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 r_set = true;
-                this->resource = string(optarg);
+                m_resource = string(optarg);
                 break;
 
             case 'i':
@@ -103,7 +105,7 @@ void ArgParser::parse(int argc, char **argv)
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 i_set = true;
-                this->interface = string(optarg);
+                m_interface = string(optarg);
                 break;
 
             case 's':
@@ -111,7 +113,7 @@ void ArgParser::parse(int argc, char **argv)
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 s_set = true;
-                this->server = string(optarg);
+                m_server = string(optarg);
                 break;
 
             case 't':
@@ -120,7 +122,7 @@ void ArgParser::parse(int argc, char **argv)
                         "Try 'dns-export --help' for more information.");
                 t_set = true;
                 try {
-                    this->timeout = stoi(optarg, &idx, 10);
+                    m_timeout = stoi(optarg, &idx, 10);
                 }
                 catch (exception &exc) {
                     throw ArgumentException("invalid timeout value\n"
@@ -137,7 +139,7 @@ void ArgParser::parse(int argc, char **argv)
                     throw ArgumentException("multiple argument error\n"
                         "Try 'dns-export --help' for more information.");
                 h_set = true;
-                this->help = true;
+                m_help = true;
                 break;
 
             case '?':
@@ -150,8 +152,10 @@ void ArgParser::parse(int argc, char **argv)
         }
     }
 
-    if (argv[optind] != nullptr) {
+    if (m_argv[optind] != nullptr) {
         throw ArgumentException("invalid argument\n"
             "Try 'dns-export --help' for more information.");
     }
+
+    // ToDo: ktere parametry je mozne kombinovat se kterymi? Co kdyz neni zadan server?
 }

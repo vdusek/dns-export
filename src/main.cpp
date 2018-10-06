@@ -14,11 +14,11 @@
 
 using namespace std;
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-    ArgParser arg_parser;
+    ArgParser arg_parser(argc, argv);
     try {
-        arg_parser.parse(argc, argv);
+        arg_parser.parse();
     }
     catch (ArgumentException &exc) {
         error(RET_INV_ARGS, "dns-export: " + string(exc.what()));

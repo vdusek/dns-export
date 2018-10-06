@@ -16,17 +16,19 @@
  */
 class ArgParser {
 private:
-    std::string resource;
-    std::string interface;
-    std::string server;
-    int timeout;
-    bool help;
+    int m_argc;
+    char **m_argv;
+    std::string m_resource;
+    std::string m_interface;
+    std::string m_server;
+    int m_timeout;
+    bool m_help;
 
 public:
     /**
      * Constructor, set all attributes to default values.
      */
-    ArgParser();
+    ArgParser(int argc, char **argv);
 
     /**
      * Destructor.
@@ -61,7 +63,7 @@ public:
     /**
      * Parse command line arguments.
      */
-    void parse(int argc, char **argv);
+    void parse();
 
     /**
      * Print all attributes on stderr for purpose of debugging.
