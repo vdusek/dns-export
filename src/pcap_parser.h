@@ -26,18 +26,6 @@ enum TypeDnsRecord {
     DNS_TXT = 16
 };
 
-//// Bytes are already in network ordering, there's no need for ntohs()
-//struct dns_flags_t {
-//    char rd :1;                // recursion desired
-//    char tc :1;                // truncated message
-//    char aa :1;                // authoritive answer
-//    char opcode :4;            // purpose of message, 0 for standard query
-//    char qr :1;                // query (0) / response (1) flag
-//    char rcode :4;             // response code, 0 if no error occurred
-//    char z :3;                 // not used, reserved for the future
-//    char ra :1;                // recursion available
-//};
-
 struct dns_header_t {
     u_int16_t id;
     u_int16_t flags;
@@ -47,13 +35,25 @@ struct dns_header_t {
     u_int16_t ar_count;
 };
 
+// Bytes are already in network ordering, there's no need for ntohs()
+struct dns_header_flags_t {
+    char rd :1;                // recursion desired
+    char tc :1;                // truncated message
+    char aa :1;                // authoritive answer
+    char opcode :4;            // purpose of message, 0 for standard query
+    char qr :1;                // query (0) / response (1) flag
+    char rcode :4;             // response code, 0 if no error occurred
+    char z :3;                 // not used, reserved for the future
+    char ra :1;                // recursion available
+};
+
 struct dns_query_t {
     // + name of the node whose resource records are being requested
     u_int16_t type;
     u_int16_t class_;
 };
 
-struct dns_answer_t {
+struct dns_rr_t {
     // + encoded name of the node to which this resource record applies
     u_int16_t type;
     u_int16_t class_;
@@ -62,10 +62,49 @@ struct dns_answer_t {
     // + specific record data
 };
 
+struct dns_rd_mx_t {
+    int16_t preference;
+    // exchange
+};
+
+struct dns_rd_soa_t {
+    // mname
+    // rname
+    u_int32_t serial;
+    int32_t refresh;
+    int32_t retry;
+    int32_t expire;
+    u_int32_t minimum;
+};
+
 void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet);
-std::string read_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift);
+
+std::string read_domain_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift);
+
+/*
+ * struct in_addr {
+ *     unsigned long s_addr;  // load with inet_aton()
+ * };
+ * INET6_ADDRSTRLEN = 16;
+ */
 std::string read_ipv4(u_char *dns_reader);
+
+/*
+ * struct in6_addr {
+ *     unsigned char   s6_addr[16];   // IPv6 address
+ * };
+ *
+ * INET6_ADDRSTRLEN = 46;
+ *
+ * // Convert IPv4 and IPv6 addresses from binary to text form
+ * const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
+ */
 std::string read_ipv6(u_char *dns_reader);
+
+std::string read_soa(u_char *dns_hdr, u_char *dns);
+
+std::string read_mx(u_char *dns_hdr, u_char *dns);
+
 void signal_handler(int sig);
 
 class PcapParser {

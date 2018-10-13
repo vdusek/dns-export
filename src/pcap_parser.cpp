@@ -33,56 +33,23 @@ using namespace std;
 // debug
 u_int n = 0,
       ip_cnt = 0,
-      arp_cnt = 0,
-      ipv6_cnt = 0,
       other_cnt = 0,
       ip_tcp_cnt = 0,
       ip_udp_cnt = 0,
       ip_other_cnt = 0,
       dns_cnt = 0;
 
+int rr_count_total = 0;
+
 string result;
 pcap_t *handle = nullptr;
 
-/*
- * struct in6_addr {
- *     unsigned char   s6_addr[16];   // IPv6 address
- * };
- *
- * INET6_ADDRSTRLEN = 46;
- *
- * // Convert IPv4 and IPv6 addresses from binary to text form
- * const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
- */
-string read_ipv6(u_char *dns_reader)
-{
-    in6_addr address;
-    memcpy(&address, dns_reader, sizeof(address));
-    char ipv6[INET6_ADDRSTRLEN] = {0};
-    inet_ntop(AF_INET6, &address, ipv6, INET6_ADDRSTRLEN);
-    return static_cast<string> (ipv6);
-}
-
-/*
- * struct in_addr {
- *     unsigned long s_addr;  // load with inet_aton()
- * };
- * INET6_ADDRSTRLEN = 16;
- */
-string read_ipv4(u_char *dns_reader)
-{
-    in_addr address;
-    memcpy(&address, dns_reader, sizeof(address));
-    char ipv4[INET_ADDRSTRLEN] = {0};
-    inet_ntop(AF_INET, &address, ipv4, INET_ADDRSTRLEN);
-    return static_cast<string> (ipv4);
-}
-
-string read_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift)
+string read_domain_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift)
 {
     string name;
     u_int32_t offset;
     bool ptr = false;
+    *shift = 0;
 
     while (*dns != '\0') {
         /* "The significance of the compression label is as follows: the first 2 bits are set to 1,
@@ -97,24 +64,86 @@ string read_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift)
         for (int cnt = *dns; cnt > 0; cnt--) {
             dns++;
             name += *dns;
+
+            if (!ptr) {
+                (*shift)++;
+            }
         }
-        name += '.';
+
         dns++;
+        name += '.';
+
+        if (!ptr) {
+            (*shift)++;
+        }
     }
 
     name.pop_back();
     name += '\0';
 
-    /* If't was pointer, shift just 2 bytes */
     if (ptr) {
-        *shift = 2;
+        (*shift) += 2;
     }
-    /* If't was a whole dns name, shift length of the string + 1 */
     else {
-        *shift = (u_int32_t) name.length() + 1;
+        (*shift)++;
     }
 
     return name;
+}
+
+string read_ipv4(u_char *dns_reader)
+{
+    in_addr address;
+    memcpy(&address, dns_reader, sizeof(address));
+    char ipv4[INET_ADDRSTRLEN] = {0};
+    inet_ntop(AF_INET, &address, ipv4, INET_ADDRSTRLEN);
+    return static_cast<string> (ipv4);
+}
+
+string read_ipv6(u_char *dns_reader)
+{
+    in6_addr address;
+    memcpy(&address, dns_reader, sizeof(address));
+    char ipv6[INET6_ADDRSTRLEN] = {0};
+    inet_ntop(AF_INET6, &address, ipv6, INET6_ADDRSTRLEN);
+    return static_cast<string> (ipv6);
+}
+
+string read_mx(u_char *dns_hdr, u_char *dns)
+{
+    string data;
+    u_int32_t shift;
+    dns_rd_mx_t *dns_rd_mx = nullptr;
+
+    dns_rd_mx = (dns_rd_mx_t *) dns;
+
+    data = to_string(ntohs(dns_rd_mx->preference)).append(" ");
+    data.append(read_domain_name(dns_hdr, dns + sizeof(dns_rd_mx_t), &shift));
+
+    return data;
+}
+
+string read_soa(u_char *dns_hdr, u_char *dns)
+{
+    string data;
+    u_int32_t shift;
+    dns_rd_soa_t *dns_rd_soa = nullptr;
+
+    data = read_domain_name(dns_hdr, dns, &shift).append(" ");
+    dns += shift;
+
+    data.append(read_domain_name(dns_hdr, dns, &shift).append(" "));
+    dns += shift;
+
+    dns_rd_soa = (dns_rd_soa_t *) dns;
+
+    data.append(to_string(ntohl(dns_rd_soa->serial)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->refresh)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->retry)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->expire)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->minimum)).append(" "));
+
+    return data;
 }
 
 void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet)
@@ -125,15 +154,16 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
     struct ip           *ip_     = nullptr;
     struct udphdr       *udp     = nullptr;
     dns_header_t          *dns_hdr = nullptr;
-    dns_answer_t          *dns_ans = nullptr;
+    dns_rr_t          *dns_ans = nullptr;
     u_char              *dns     = nullptr;
 
     const u_int eth_len     = 14,
                 udp_len     = 8,
                 dns_hdr_len = 12;
 
-    u_int ip_len,
-          shift;
+    u_int ip_len;
+
+    u_int32_t shift;
 
     string name,
            data,
@@ -150,14 +180,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
             ip_ = (ip *) (packet + eth_len);
             ip_len = ip_->ip_hl * 4;
             break;
-
-        case ETHERTYPE_ARP:
-            arp_cnt++;
-            return;
-
-        case ETHERTYPE_IPV6:
-            ipv6_cnt++;
-            return;
 
         default:
             other_cnt++;
@@ -208,12 +230,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         return;
     }
 
-    /* Filter just responses with answers */
-    if (ntohs(dns_hdr->an_count) == 0) {
-        cerr << "There's no answer" << endl;
-        return;
-    }
-
     dns_cnt++; // DNS traffic
 
     fprintf(stderr, "------------------------------------------------------------------------------\n\n");
@@ -243,23 +259,27 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         ;
     dns += (1 + sizeof(dns_query_t));
 
+    // Mozna prochazet i zbyle typy records (?)
+    int rr_count = ntohs(dns_hdr->an_count) + ntohs(dns_hdr->ns_count); // + ntohs(dns_hdr->ar_count);
+    rr_count_total += rr_count;
+
     /* For every answer */
-    for (int i = 0; i < ntohs(dns_hdr->an_count); i++) {
+    for (int i = 0; i < rr_count; i++) {
 
         fprintf(stderr, "DNS answer (%d)\n", i + 1);
 
-        name = read_name((u_char *) dns_hdr, dns, &shift);
+        name = read_domain_name((u_char *) dns_hdr, dns, &shift);
 
         fprintf(stderr, "    domain_name = %s\n", name.c_str());
 
-        dns_ans = (dns_answer_t *) (dns + shift);
+        dns_ans = (dns_rr_t *) (dns + shift);
 
         fprintf(stderr, "    type = %d\n", ntohs(dns_ans->type));
         fprintf(stderr, "    class = %d\n", ntohs(dns_ans->class_));
         fprintf(stderr, "    ttl = %d\n", ntohl(dns_ans->ttl));
         fprintf(stderr, "    data_len = %d\n", ntohs(dns_ans->data_len));
 
-        dns = dns + sizeof(dns_answer_t);
+        dns += sizeof(dns_rr_t);
 
         switch (ntohs(dns_ans->type)) {
 
@@ -274,26 +294,22 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             case DNS_CNAME:
-                // Shift is not gonna be used
-                data = read_name((u_char *) dns_hdr, dns, &shift);
+                data = read_domain_name((u_char *) dns_hdr, dns, &shift);
                 type = "CNAME";
                 break;
 
             case DNS_DS:
-                // ToDo
                 data = "ToDo";
                 type = "DS";
                 break;
 
             case DNS_MX:
-                // ToDo
-                data = "ToDo";
+                data = read_mx((u_char *) dns_hdr, dns);
                 type = "MX";
                 break;
 
             case DNS_NS:
-                // ToDo
-                data = "ToDo";
+                data = read_domain_name((u_char *) dns_hdr, dns, &shift);
                 type = "NS";
                 break;
 
@@ -304,8 +320,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             case DNS_PTR:
-                // ToDo
-                data = "ToDo";
+                data = read_domain_name((u_char *) dns_hdr, dns, &shift);
                 type = "PTR";
                 break;
 
@@ -316,8 +331,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             case DNS_SOA:
-                // ToDo
-                data = "ToDo";
+                data = read_soa((u_char *) dns_hdr, dns);
                 type = "SOA";
                 break;
 
@@ -344,10 +358,12 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         fprintf(stderr, "    data = %s\n\n", data.c_str());
         fprintf(stderr, "%s %s %s\n\n", name.c_str(), type.c_str(), data.c_str());
 
-        result += name.append(" ") + type.append(" ") + data.append("\n");
+//        if (ntohs(dns_ans->type) == DNS_MX)
+            result += name.append(" ") + type.append(" ") + data.append("\n");
     }
 
-//    if (ntohs(dns_hdr->id) == 0xa2bc) {
+//    if (ntohs(dns_hdr->id) == 0x5443) {
+//        cout << result << endl;
 //        exit(0);
 //    }
 }
@@ -394,14 +410,13 @@ void PcapParser::parse_file()
 
     cout << endl;
     cout << "Summary: " << endl;
-    cout << "ARP = " << arp_cnt << endl;
-    cout << "IPv6 = " << ipv6_cnt << endl;
     cout << "other = " << other_cnt << endl;
     cout << "IP = " << ip_cnt << endl;
     cout << "    other = " << ip_other_cnt << endl;
     cout << "    TCP = " << ip_tcp_cnt << endl;
     cout << "    UDP = " << ip_udp_cnt << endl;
     cout << "        DNS = " << dns_cnt << endl;
+    cout << "            Record count in total = " << rr_count_total << endl;
 }
 
 void PcapParser::parse_interface(u_int timeout)
@@ -426,8 +441,6 @@ void PcapParser::parse_interface(u_int timeout)
 
     cout << endl;
     cout << "Summary: " << endl;
-    cout << "ARP = " << arp_cnt << endl;
-    cout << "IPv6 = " << ipv6_cnt << endl;
     cout << "other = " << other_cnt << endl;
     cout << "IP = " << ip_cnt << endl;
     cout << "    other = " << ip_other_cnt << endl;
