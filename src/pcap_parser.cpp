@@ -6,11 +6,6 @@
 // Date: 30/9/2018
 // File: pcap_parser.cpp
 
-#include <string>
-#include <iostream>
-#include <bitset>
-#include <vector>
-
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -25,6 +20,12 @@
 #include <arpa/inet.h>
 #include <linux/udp.h>
 #include <bits/signum.h>
+
+#include <string>
+#include <iostream>
+#include <bitset>
+#include <vector>
+#include <unordered_map>
 
 #include "pcap_parser.h"
 
@@ -41,8 +42,8 @@ u_int n = 0,
 
 int rr_count_total = 0;
 
-string result;
 pcap_t *handle = nullptr;
+unordered_map<string, int> result_map;
 
 string read_domain_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift)
 {
@@ -143,6 +144,16 @@ string read_soa(u_char *dns_hdr, u_char *dns)
     data.append(to_string(ntohl(dns_rd_soa->expire)).append(" "));
     data.append(to_string(ntohl(dns_rd_soa->minimum)).append(" "));
 
+    return data;
+}
+
+string read_txt(u_char *dns)
+{
+    string data;
+    while (*dns != '\0') {
+        data += *dns;
+        dns++;
+    }
     return data;
 }
 
@@ -259,6 +270,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         ;
     dns += (1 + sizeof(dns_query_t));
 
+    string record;
+
     // Mozna prochazet i zbyle typy records (?)
     int rr_count = ntohs(dns_hdr->an_count) + ntohs(dns_hdr->ns_count); // + ntohs(dns_hdr->ar_count);
     rr_count_total += rr_count;
@@ -298,6 +311,11 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 type = "CNAME";
                 break;
 
+            case DNS_DNSKEY:
+                data = "ToDo";
+                type = "DNSKEY";
+                break;
+
             case DNS_DS:
                 data = "ToDo";
                 type = "DS";
@@ -335,15 +353,16 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 type = "SOA";
                 break;
 
+            // ToDo: test this case
             case DNS_SPF:
                 // ToDo
-                data = "ToDo";
+                data = read_txt(dns);
                 type = "SPF";
                 break;
 
+            // ToDo: test this case
             case DNS_TXT:
-                // ToDo
-                data = "ToDo";
+                data = read_txt(dns);
                 type = "TXT";
                 break;
 
@@ -355,15 +374,24 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         }
         dns += ntohs(dns_ans->data_len);
 
-        fprintf(stderr, "    data = %s\n\n", data.c_str());
-        fprintf(stderr, "%s %s %s\n\n", name.c_str(), type.c_str(), data.c_str());
+        fprintf(stderr, "    data = %s\n\n", data.c_str()); // debug
+        cerr << name << " " << type << " " << data << endl; // debug
 
-//        if (ntohs(dns_ans->type) == DNS_MX)
-            result += name.append(" ") + type.append(" ") + data.append("\n");
+
+        record = name.append(" ") + type.append(" ") + data.append(" ");
+
+        auto search = result_map.find(record);
+
+        if (search != result_map.end()) {
+            result_map[record]++;
+        }
+        else {
+            result_map[record] = 1;
+        }
     }
 
 //    if (ntohs(dns_hdr->id) == 0x5443) {
-//        cout << result << endl;
+//        cout << record << endl;
 //        exit(0);
 //    }
 }
@@ -375,7 +403,9 @@ void signal_handler(int sig)
             pcap_breakloop(handle);
             break;
         case SIGUSR1:
-            cout << result;
+            for (const auto &elem : result_map) {
+                cout << elem.first << elem.second << endl;
+            }
             break;
     }
 }
@@ -405,18 +435,19 @@ void PcapParser::parse_file()
     pcap_loop(handle, 0, packet_handler, nullptr);
     pcap_close(handle);
 
-    // ToDo: send to syslog
-    cout << result;
+    // ToDo: not print, but send to syslog
+    for (const auto &elem : result_map) {
+        cout << elem.first << elem.second << endl;
+    }
 
-    cout << endl;
-    cout << "Summary: " << endl;
-    cout << "other = " << other_cnt << endl;
-    cout << "IP = " << ip_cnt << endl;
-    cout << "    other = " << ip_other_cnt << endl;
-    cout << "    TCP = " << ip_tcp_cnt << endl;
-    cout << "    UDP = " << ip_udp_cnt << endl;
-    cout << "        DNS = " << dns_cnt << endl;
-    cout << "            Record count in total = " << rr_count_total << endl;
+    cerr << endl;
+    cerr << "Summary: " << endl;
+    cerr << "other = " << other_cnt << endl;
+    cerr << "IP = " << ip_cnt << endl;
+    cerr << "    other = " << ip_other_cnt << endl;
+    cerr << "    TCP = " << ip_tcp_cnt << endl;
+    cerr << "    UDP = " << ip_udp_cnt << endl;
+    cerr << "        DNS = " << dns_cnt << endl;
 }
 
 void PcapParser::parse_interface(u_int timeout)
@@ -436,15 +467,17 @@ void PcapParser::parse_interface(u_int timeout)
     pcap_loop(handle, 0, packet_handler, nullptr);
     pcap_close(handle);
 
-    // ToDo: send to syslog
-    cout << result;
+    // ToDo: not print, but send to syslog
+    for (const auto &elem : result_map) {
+        cout << elem.first << elem.second << endl;
+    }
 
-    cout << endl;
-    cout << "Summary: " << endl;
-    cout << "other = " << other_cnt << endl;
-    cout << "IP = " << ip_cnt << endl;
-    cout << "    other = " << ip_other_cnt << endl;
-    cout << "    TCP = " << ip_tcp_cnt << endl;
-    cout << "    UDP = " << ip_udp_cnt << endl;
-    cout << "        DNS = " << dns_cnt << endl;
+    cerr << endl;
+    cerr << "Summary: " << endl;
+    cerr << "other = " << other_cnt << endl;
+    cerr << "IP = " << ip_cnt << endl;
+    cerr << "    other = " << ip_other_cnt << endl;
+    cerr << "    TCP = " << ip_tcp_cnt << endl;
+    cerr << "    UDP = " << ip_udp_cnt << endl;
+    cerr << "        DNS = " << dns_cnt << endl;
 }

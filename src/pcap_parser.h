@@ -15,12 +15,13 @@ enum TypeDnsRecord {
     DNS_A = 1,
     DNS_AAAA = 28,
     DNS_CNAME = 5,
-    DNS_DS = 43,
+    DNS_DNSKEY = 48, // (dnssec) ToDo
+    DNS_DS = 43, // (dnssec) ToDo
     DNS_MX = 15,
     DNS_NS = 2,
-    DNS_NSEC = 47,
+    DNS_NSEC = 47, // (dnssec) ToDo
     DNS_PTR = 12,
-    DNS_RRSIG = 46,
+    DNS_RRSIG = 46, // (dnssec) ToDo
     DNS_SOA = 6,
     DNS_SPF = 99,
     DNS_TXT = 16
@@ -104,6 +105,8 @@ std::string read_ipv6(u_char *dns_reader);
 std::string read_soa(u_char *dns_hdr, u_char *dns);
 
 std::string read_mx(u_char *dns_hdr, u_char *dns);
+
+std::string read_txt(u_char *dns);
 
 void signal_handler(int sig);
 
