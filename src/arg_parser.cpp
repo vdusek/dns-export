@@ -122,7 +122,7 @@ void ArgParser::parse()
                         "Try 'dns-export --help' for more information.");
                 t_set = true;
                 try {
-                    m_timeout = stoi(optarg, &idx, 10);
+                    m_timeout = static_cast<u_int>(stoi(optarg, &idx, 10));
                 }
                 catch (exception &exc) {
                     throw ArgumentException("invalid timeout value\n"

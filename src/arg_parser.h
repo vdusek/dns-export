@@ -21,7 +21,7 @@ private:
     std::string m_resource;
     std::string m_interface;
     std::string m_server;
-    int m_timeout;
+    u_int m_timeout;
     bool m_help;
 
 public:

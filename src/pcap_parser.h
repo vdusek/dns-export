@@ -26,7 +26,19 @@ enum TypeDnsRecord {
     DNS_TXT = 16
 };
 
-struct DnsHeader {
+//// Bytes are already in network ordering, there's no need for ntohs()
+//struct dns_flags_t {
+//    char rd :1;                // recursion desired
+//    char tc :1;                // truncated message
+//    char aa :1;                // authoritive answer
+//    char opcode :4;            // purpose of message, 0 for standard query
+//    char qr :1;                // query (0) / response (1) flag
+//    char rcode :4;             // response code, 0 if no error occurred
+//    char z :3;                 // not used, reserved for the future
+//    char ra :1;                // recursion available
+//};
+
+struct dns_header_t {
     u_int16_t id;
     u_int16_t flags;
     u_int16_t qd_count;
@@ -35,13 +47,13 @@ struct DnsHeader {
     u_int16_t ar_count;
 };
 
-struct DnsQuery {
+struct dns_query_t {
     // + name of the node whose resource records are being requested
     u_int16_t type;
     u_int16_t class_;
 };
 
-struct DnsAnswer {
+struct dns_answer_t {
     // + encoded name of the node to which this resource record applies
     u_int16_t type;
     u_int16_t class_;
@@ -54,16 +66,18 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
 std::string read_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift);
 std::string read_ipv4(u_char *dns_reader);
 std::string read_ipv6(u_char *dns_reader);
+void signal_handler(int sig);
 
 class PcapParser {
 private:
     std::string m_filename;
+    std::string m_interface;
 
 public:
     /**
      * Constructor.
      */
-    PcapParser(std::string filename);
+    PcapParser(std::string filename, std::string interface);
 
     /**
      * Destructor.
@@ -73,5 +87,10 @@ public:
     /**
      * Parse pcap file.
      */
-    void parse();
+    void parse_file();
+
+    /**
+     * Parse pcap file.
+     */
+    void parse_interface(u_int timeout);
 };

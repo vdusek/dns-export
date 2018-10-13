@@ -32,12 +32,14 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (arg_parser.get_resource() != "") {
-        PcapParser pcap_parser(arg_parser.get_resource());
-        pcap_parser.parse();
-    }
+    PcapParser pcap_parser(arg_parser.get_resource(), arg_parser.get_interface());
 
-    // ToDo:
+    if (arg_parser.get_resource() != "") {
+        pcap_parser.parse_file();
+    }
+    else if (arg_parser.get_interface() != "") {
+        pcap_parser.parse_interface(arg_parser.get_timeout());
+    }
 
     return 0;
 }

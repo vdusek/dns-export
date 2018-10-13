@@ -11,6 +11,8 @@
 #include <bitset>
 #include <vector>
 
+#include <unistd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -22,6 +24,7 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <linux/udp.h>
+#include <bits/signum.h>
 
 #include "pcap_parser.h"
 
@@ -37,6 +40,9 @@ u_int n = 0,
       ip_udp_cnt = 0,
       ip_other_cnt = 0,
       dns_cnt = 0;
+
+string result;
+pcap_t *handle = nullptr;
 
 /*
  * struct in6_addr {
@@ -118,8 +124,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
     struct ether_header *eth     = nullptr;
     struct ip           *ip_     = nullptr;
     struct udphdr       *udp     = nullptr;
-    DnsHeader          *dns_hdr = nullptr;
-    DnsAnswer          *dns_ans = nullptr;
+    dns_header_t          *dns_hdr = nullptr;
+    dns_answer_t          *dns_ans = nullptr;
     u_char              *dns     = nullptr;
 
     const u_int eth_len     = 14,
@@ -131,9 +137,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
 
     string name,
            data,
-           type,
-           result;
-
+           type;
 
     n++; // debug
     eth = (ether_header *) packet;
@@ -183,7 +187,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         return;
     }
 
-    dns_hdr = (DnsHeader *) ((char *) udp + udp_len);
+    dns_hdr = (dns_header_t *) ((char *) udp + udp_len);
 
     /* Filter just responses */
     if (!(ntohs(dns_hdr->flags) & 0b1000000000000000)) {
@@ -192,7 +196,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
     }
 
     /* Filter just no error responses */
-    if (ntohs(dns_hdr->flags) & 0b0000000000001111)  {
+    if (ntohs(dns_hdr->flags) & 0b0000000000001111) {
         cerr << "There's an error in the response" << endl;
         return;
     }
@@ -237,7 +241,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
     /* Skip query (name + 2 + 2) */
     while (*(++dns) != '\0')
         ;
-    dns += (1 + sizeof(DnsQuery));
+    dns += (1 + sizeof(dns_query_t));
 
     /* For every answer */
     for (int i = 0; i < ntohs(dns_hdr->an_count); i++) {
@@ -248,14 +252,14 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
 
         fprintf(stderr, "    domain_name = %s\n", name.c_str());
 
-        dns_ans = (DnsAnswer *) (dns + shift);
+        dns_ans = (dns_answer_t *) (dns + shift);
 
         fprintf(stderr, "    type = %d\n", ntohs(dns_ans->type));
         fprintf(stderr, "    class = %d\n", ntohs(dns_ans->class_));
         fprintf(stderr, "    ttl = %d\n", ntohl(dns_ans->ttl));
         fprintf(stderr, "    data_len = %d\n", ntohs(dns_ans->data_len));
 
-        dns = dns + sizeof(DnsAnswer);
+        dns = dns + sizeof(dns_answer_t);
 
         switch (ntohs(dns_ans->type)) {
 
@@ -276,33 +280,63 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             case DNS_DS:
+                // ToDo
+                data = "ToDo";
+                type = "DS";
                 break;
 
             case DNS_MX:
+                // ToDo
+                data = "ToDo";
+                type = "MX";
                 break;
 
             case DNS_NS:
+                // ToDo
+                data = "ToDo";
+                type = "NS";
                 break;
 
             case DNS_NSEC:
+                // ToDo
+                data = "ToDo";
+                type = "NSEC";
                 break;
 
             case DNS_PTR:
+                // ToDo
+                data = "ToDo";
+                type = "PTR";
                 break;
 
             case DNS_RRSIG:
+                // ToDo
+                data = "ToDo";
+                type = "RRSIG";
                 break;
 
             case DNS_SOA:
+                // ToDo
+                data = "ToDo";
+                type = "SOA";
                 break;
 
             case DNS_SPF:
+                // ToDo
+                data = "ToDo";
+                type = "SPF";
                 break;
 
             case DNS_TXT:
+                // ToDo
+                data = "ToDo";
+                type = "TXT";
                 break;
 
             default:
+                // ToDo
+                data = "unknown_data";
+                type = "unknown_type";
                 break;
         }
         dns += ntohs(dns_ans->data_len);
@@ -313,15 +347,26 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         result += name.append(" ") + type.append(" ") + data.append("\n");
     }
 
-    cout << result;
-
 //    if (ntohs(dns_hdr->id) == 0xa2bc) {
 //        exit(0);
 //    }
 }
 
-PcapParser::PcapParser(std::string filename):
-    m_filename(filename)
+void signal_handler(int sig)
+{
+    switch (sig) {
+        case SIGALRM:
+            pcap_breakloop(handle);
+            break;
+        case SIGUSR1:
+            cout << result;
+            break;
+    }
+}
+
+PcapParser::PcapParser(std::string filename, std::string interface):
+    m_filename(filename),
+    m_interface(interface)
 {
 }
 
@@ -329,24 +374,23 @@ PcapParser::~PcapParser()
 {
 }
 
-void PcapParser::parse()
+void PcapParser::parse_file()
 {
     char error_buffer[PCAP_ERRBUF_SIZE];
-
     pcap_t *handle = nullptr;
-    const u_char *packet;
-    struct pcap_pkthdr packet_header;
+
+    signal(SIGUSR1, signal_handler);
 
     handle = pcap_open_offline(m_filename.c_str(), error_buffer);
-    packet = pcap_next(handle, &packet_header);
-
-    if (packet == NULL) {
-        cerr << "No packet found." << endl;
+    if (handle == nullptr) {
+        fprintf(stderr, "Could not open device %s: %s\n", m_interface.c_str(), error_buffer);
         return;
     }
-
     pcap_loop(handle, 0, packet_handler, nullptr);
     pcap_close(handle);
+
+    // ToDo: send to syslog
+    cout << result;
 
     cout << endl;
     cout << "Summary: " << endl;
@@ -358,6 +402,36 @@ void PcapParser::parse()
     cout << "    TCP = " << ip_tcp_cnt << endl;
     cout << "    UDP = " << ip_udp_cnt << endl;
     cout << "        DNS = " << dns_cnt << endl;
+}
 
-    // ToDo
+void PcapParser::parse_interface(u_int timeout)
+{
+    char error_buffer[PCAP_ERRBUF_SIZE] = {0};
+
+    alarm(timeout);
+    signal(SIGALRM, signal_handler);
+    signal(SIGUSR1, signal_handler);
+
+    /* Open device for live capture */
+    handle = pcap_open_live(m_interface.c_str(), BUFSIZ, 1, 1000, error_buffer);
+    if (handle == nullptr) {
+        fprintf(stderr, "Could not open device %s: %s\n", m_interface.c_str(), error_buffer);
+        return;
+    }
+    pcap_loop(handle, 0, packet_handler, nullptr);
+    pcap_close(handle);
+
+    // ToDo: send to syslog
+    cout << result;
+
+    cout << endl;
+    cout << "Summary: " << endl;
+    cout << "ARP = " << arp_cnt << endl;
+    cout << "IPv6 = " << ipv6_cnt << endl;
+    cout << "other = " << other_cnt << endl;
+    cout << "IP = " << ip_cnt << endl;
+    cout << "    other = " << ip_other_cnt << endl;
+    cout << "    TCP = " << ip_tcp_cnt << endl;
+    cout << "    UDP = " << ip_udp_cnt << endl;
+    cout << "        DNS = " << dns_cnt << endl;
 }
