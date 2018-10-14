@@ -42,6 +42,8 @@ void print_help();
  */
 void error(RetCode ret_code, std::string message);
 
+void signal_handler(int sig);
+
 /**
  * Exception for arguments failures.
  */

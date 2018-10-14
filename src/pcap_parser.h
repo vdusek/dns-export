@@ -10,6 +10,10 @@
 
 #include <string>
 #include <pcap/pcap.h>
+#include <unordered_map>
+
+extern pcap_t *handle;
+extern std::unordered_map<std::string, int> result_map;
 
 enum TypeDnsRecord {
     DNS_A = 1,
@@ -108,7 +112,7 @@ std::string read_mx(u_char *dns_hdr, u_char *dns);
 
 std::string read_txt(u_char *dns);
 
-void signal_handler(int sig);
+//void signal_handler(int sig);
 
 class PcapParser {
 private:

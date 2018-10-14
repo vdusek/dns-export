@@ -7,7 +7,6 @@
 // File: pcap_parser.cpp
 
 #include <unistd.h>
-#include <signal.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -19,7 +18,7 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <linux/udp.h>
-#include <bits/signum.h>
+#include <signal.h>
 
 #include <string>
 #include <iostream>
@@ -28,17 +27,14 @@
 #include <unordered_map>
 
 #include "pcap_parser.h"
+#include "utils.h"
 
 using namespace std;
 
 // debug
-u_int n = 0,
-      ip_cnt = 0,
-      other_cnt = 0,
-      ip_tcp_cnt = 0,
-      ip_udp_cnt = 0,
-      ip_other_cnt = 0,
-      dns_cnt = 0;
+u_int dns_cnt = 0,
+      pck_cnt = 0,
+      dns_ans_cnt = 0;
 
 int rr_count_total = 0;
 
@@ -164,8 +160,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
     struct ether_header *eth     = nullptr;
     struct ip           *ip_     = nullptr;
     struct udphdr       *udp     = nullptr;
-    dns_header_t          *dns_hdr = nullptr;
-    dns_rr_t          *dns_ans = nullptr;
+    dns_header_t        *dns_hdr = nullptr;
+    dns_rr_t            *dns_ans = nullptr;
     u_char              *dns     = nullptr;
 
     const u_int eth_len     = 14,
@@ -180,39 +176,26 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
            data,
            type;
 
-    n++; // debug
+    pck_cnt++; // debug
     eth = (ether_header *) packet;
 
     /* Filter just IP frames */
-    switch (ntohs(eth->ether_type)) {
-
-        case ETHERTYPE_IP:
-            ip_cnt++;
-            ip_ = (ip *) (packet + eth_len);
-            ip_len = ip_->ip_hl * 4;
-            break;
-
-        default:
-            other_cnt++;
-            return;
+    if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
+        cerr << "Not an IP frame" << endl;
+        return;
     }
+
+    ip_ = (ip *) (packet + eth_len);
+    ip_len = ip_->ip_hl * 4;
 
     /* Filter just UDP communication */
-    switch (ip_->ip_p) {
-
-        case IPPROTO_UDP:
-            ip_udp_cnt++;
-            udp = (udphdr *) ((char *) ip_ + ip_len);
-            break;
-
-        case IPPROTO_TCP:
-            ip_tcp_cnt++;
-            return;
-
-        default:
-            ip_other_cnt++;
-            return;
+    // ToDo: parse TCP packets as well
+    if (ip_->ip_p != IPPROTO_UDP) {
+        cerr << "Not an UDP datagram" << endl;
+        return;
     }
+
+    udp = (udphdr *) ((char *) ip_ + ip_len);
 
     /* Filter just communication with source port 53 */
     if (ntohs(udp->source) != 53) {
@@ -241,10 +224,10 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         return;
     }
 
-    dns_cnt++; // DNS traffic
+    dns_cnt++;
 
     fprintf(stderr, "------------------------------------------------------------------------------\n\n");
-    fprintf(stderr, "Packet no. %d\n", n);
+    fprintf(stderr, "Packet no. %d\n", pck_cnt);
     fprintf(stderr, "    Length: %d\n", packet_hdr->len);
     fprintf(stderr, "    Source MAC: %s\n", ether_ntoa((const struct ether_addr *) & eth->ether_shost));
     fprintf(stderr, "    Destination MAC: %s\n", ether_ntoa((const struct ether_addr *) & eth->ether_dhost));
@@ -278,6 +261,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
 
     /* For every answer */
     for (int i = 0; i < rr_count; i++) {
+        dns_ans_cnt++;
 
         fprintf(stderr, "DNS answer (%d)\n", i + 1);
 
@@ -377,7 +361,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         fprintf(stderr, "    data = %s\n\n", data.c_str()); // debug
         cerr << name << " " << type << " " << data << endl; // debug
 
-
         record = name.append(" ") + type.append(" ") + data.append(" ");
 
         auto search = result_map.find(record);
@@ -394,20 +377,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
 //        cout << record << endl;
 //        exit(0);
 //    }
-}
-
-void signal_handler(int sig)
-{
-    switch (sig) {
-        case SIGALRM:
-            pcap_breakloop(handle);
-            break;
-        case SIGUSR1:
-            for (const auto &elem : result_map) {
-                cout << elem.first << elem.second << endl;
-            }
-            break;
-    }
 }
 
 PcapParser::PcapParser(std::string filename, std::string interface):
@@ -442,12 +411,9 @@ void PcapParser::parse_file()
 
     cerr << endl;
     cerr << "Summary: " << endl;
-    cerr << "other = " << other_cnt << endl;
-    cerr << "IP = " << ip_cnt << endl;
-    cerr << "    other = " << ip_other_cnt << endl;
-    cerr << "    TCP = " << ip_tcp_cnt << endl;
-    cerr << "    UDP = " << ip_udp_cnt << endl;
-    cerr << "        DNS = " << dns_cnt << endl;
+    cerr << "    Number of packets = " << pck_cnt << endl;
+    cerr << "    DNS = " << dns_cnt << endl;
+    cerr << "    DNS answers = " << dns_ans_cnt << endl;
 }
 
 void PcapParser::parse_interface(u_int timeout)
@@ -474,10 +440,7 @@ void PcapParser::parse_interface(u_int timeout)
 
     cerr << endl;
     cerr << "Summary: " << endl;
-    cerr << "other = " << other_cnt << endl;
-    cerr << "IP = " << ip_cnt << endl;
-    cerr << "    other = " << ip_other_cnt << endl;
-    cerr << "    TCP = " << ip_tcp_cnt << endl;
-    cerr << "    UDP = " << ip_udp_cnt << endl;
-    cerr << "        DNS = " << dns_cnt << endl;
+    cerr << "    Number of packets = " << pck_cnt << endl;
+    cerr << "    DNS = " << dns_cnt << endl;
+    cerr << "    DNS answers = " << dns_ans_cnt << endl;
 }
