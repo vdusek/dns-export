@@ -49,7 +49,19 @@ void signal_handler(int sig);
  */
 class ArgumentException: public std::invalid_argument {
 public:
-    ArgumentException(std::string const &message): std::invalid_argument(message) {}
+    ArgumentException(const std::string &message): std::invalid_argument(message) {}
+};
+
+/**
+ * Exception for pcap_parser failures.
+ */
+class PcapException: public std::exception {
+    const char *what() const noexcept override {
+        return m_msg.c_str();
+    }
+    PcapException(const std::string &msg): m_msg(msg) {};
+private:
+    std::string m_msg;
 };
 
 /**

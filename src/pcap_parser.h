@@ -29,9 +29,31 @@ enum TypeDnsRecord {
     DNS_SOA = 6,
     DNS_SPF = 99,
     DNS_TXT = 16
+    // ToDo: vice typu
 };
 
-struct dns_header_t {
+enum DnsSecAlgorithmType {
+    DNSSEC_DELETE = 0,
+    DNSSEC_RSAMD5 = 1,
+    DNSSEC_DH = 2,
+    DNSSEC_DSA = 3,
+    DNSSEC_RSASHA1 = 5,
+    DNSSEC_DSA_NSEC3_SHA1 = 6,
+    DNSSEC_RSASHA1_NSEC3_SHA1 = 7,
+    DNSSEC_RSASHA256 = 8,
+    DNSSEC_RSASHA512 = 10,
+    DNSSEC_ECC_GOST = 12,
+    DNSSEC_ECDSAP256SHA256 = 13,
+    DNSSEC_ECDSAP384SHA384 = 14,
+    DNSSEC_ED25519 = 15,
+    DNSSEC_ED448 = 16,
+    DNSSEC_INDIRECT = 252,
+    DNSSEC_PRIVATEDNS = 253,
+    DNSSEC_PRIVATEOID = 254
+    // Other values are reserved or unassigned
+};
+
+struct __attribute__((packed)) dns_header_t {
     u_int16_t id;
     u_int16_t flags;
     u_int16_t qd_count;
@@ -41,7 +63,7 @@ struct dns_header_t {
 };
 
 // Bytes are already in network ordering, there's no need for ntohs()
-struct dns_header_flags_t {
+struct __attribute__((packed)) dns_header_flags_t {
     char rd :1;                // recursion desired
     char tc :1;                // truncated message
     char aa :1;                // authoritive answer
@@ -52,13 +74,13 @@ struct dns_header_flags_t {
     char ra :1;                // recursion available
 };
 
-struct dns_query_t {
+struct __attribute__((packed)) dns_query_t {
     // + name of the node whose resource records are being requested
     u_int16_t type;
     u_int16_t class_;
 };
 
-struct dns_rr_t {
+struct __attribute__((packed)) dns_rr_t {
     // + encoded name of the node to which this resource record applies
     u_int16_t type;
     u_int16_t class_;
@@ -67,14 +89,14 @@ struct dns_rr_t {
     // + specific record data
 };
 
-struct dns_rd_mx_t {
+struct __attribute__((packed)) dns_rd_mx_t {
     int16_t preference;
     // exchange
 };
 
-struct dns_rd_soa_t {
-    // mname
-    // rname
+struct __attribute__((packed)) dns_rd_soa_t {
+    // + mname
+    // + rname
     u_int32_t serial;
     int32_t refresh;
     int32_t retry;
@@ -82,28 +104,28 @@ struct dns_rd_soa_t {
     u_int32_t minimum;
 };
 
+struct __attribute__((packed)) dns_rd_rrsig_t {
+    u_int16_t type_covered;
+    u_char algorithm;
+    u_char labels;
+    u_int32_t original_ttl;
+    u_int32_t signature_expiration;
+    u_int32_t signature_inception;
+    u_int16_t key_tag;
+    // + Signer's Name
+    // + Signature
+};
+
 void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet);
+
+std::string dns_record_to_str(TypeDnsRecord type_dns_record);
+
+std::string dnssec_algorithm_to_str(DnsSecAlgorithmType dnssec_algorithm_type);
 
 std::string read_domain_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift);
 
-/*
- * struct in_addr {
- *     unsigned long s_addr;  // load with inet_aton()
- * };
- * INET6_ADDRSTRLEN = 16;
- */
 std::string read_ipv4(u_char *dns_reader);
 
-/*
- * struct in6_addr {
- *     unsigned char   s6_addr[16];   // IPv6 address
- * };
- *
- * INET6_ADDRSTRLEN = 46;
- *
- * // Convert IPv4 and IPv6 addresses from binary to text form
- * const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
- */
 std::string read_ipv6(u_char *dns_reader);
 
 std::string read_soa(u_char *dns_hdr, u_char *dns);
@@ -112,7 +134,12 @@ std::string read_mx(u_char *dns_hdr, u_char *dns);
 
 std::string read_txt(u_char *dns);
 
-//void signal_handler(int sig);
+std::string read_nsec(u_char *dns_hdr, u_char *dns);
+
+std::string read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len);
+
+
+
 
 class PcapParser {
 private:
