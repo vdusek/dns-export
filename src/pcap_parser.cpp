@@ -477,6 +477,22 @@ string read_ds(u_char *dns, u_int16_t data_len)
     return data;
 }
 
+string read_dnskey(u_char *dns, u_int16_t data_len)
+{
+    string data;
+    dns_rd_dnskey_t *dns_rd_dnskey = reinterpret_cast<dns_rd_dnskey_t *>(dns);
+
+    data.append(to_hexa(reinterpret_cast<u_char *>(&dns_rd_dnskey->flags), sizeof(dns_rd_dnskey->flags)).append(" "));
+    data.append(to_string(dns_rd_dnskey->protocol));
+    data.append(dnssec_algorithm_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_dnskey->algorithm)).append(" "));
+
+    dns += sizeof(dns_rd_dnskey_t);
+
+    data.append(to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
+
+    return data;
+}
+
 void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet)
 {
     (void) args; (void) packet_hdr; // Stop yelling at me!
@@ -620,9 +636,9 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 type = "CNAME";
                 break;
 
+            // ToDo: test this case
             case DNS_DNSKEY:
-                // ToDo
-                data = "ToDo";
+                data = read_dnskey(dns, ntohs(dns_ans->data_len));
                 type = "DNSKEY";
                 break;
 
@@ -663,7 +679,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
 
             // ToDo: test this case
             case DNS_SPF:
-                // ToDo
                 data = read_txt(dns);
                 type = "SPF";
                 break;
@@ -675,7 +690,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             default:
-                // ToDo
                 data = "unknown_data";
                 type = "unknown_type";
                 break;
@@ -685,8 +699,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         fprintf(stderr, "    data = %s\n", data.c_str()); // debug
         cerr << name << " " << type << " " << data << endl << endl; // debug
 
-//        if (ntohs(dns_ans->type) == DNS_DS)
-            record = name.append(" ") + type.append(" ") + data.append(" ");
+        record = name.append(" ") + type.append(" ") + data.append(" ");
 
         auto search = result_map.find(record);
 

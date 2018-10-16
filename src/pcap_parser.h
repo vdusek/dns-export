@@ -20,7 +20,7 @@ enum TypeDnsRecord {
     DNS_AAAA = 28,
     DNS_CNAME = 5,
     DNS_DNSKEY = 48, // (dnssec) ToDo
-    DNS_DS = 43, // (dnssec) ToDo
+    DNS_DS = 43,
     DNS_MX = 15,
     DNS_NS = 2,
     DNS_NSEC = 47,
@@ -130,6 +130,13 @@ struct __attribute__((packed)) dns_rd_ds_t {
     u_char algorithm;
     u_char digest_type;
     // + Digest
+};
+
+struct __attribute__((packed)) dns_rd_dnskey_t {
+    u_int16_t flags;
+    u_char protocol;
+    u_char algorithm;
+    // + public key
 };
 
 void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet);
