@@ -97,65 +97,90 @@ string dns_record_to_str(TypeDnsRecord type_dns_record)
 
 string dnssec_algorithm_to_str(DnsSecAlgorithmType dnssec_algorithm_type)
 {
-    string algorithm;
+    string s;
 
     switch (dnssec_algorithm_type) {
         case DNSSEC_DELETE:
-            algorithm = "delete";
+            s = "delete";
             break;
         case DNSSEC_RSAMD5:
-            algorithm = "RSA/MD5";
+            s = "RSA/MD5";
             break;
         case DNSSEC_DH:
-            algorithm = "Diffie-Hellman";
+            s = "Diffie-Hellman";
             break;
         case DNSSEC_DSA:
-            algorithm = "DSA/SHA-1";
+            s = "DSA/SHA-1";
             break;
         case DNSSEC_RSASHA1:
-            algorithm = "RSA/SHA-1";
+            s = "RSA/SHA-1";
             break;
         case DNSSEC_DSA_NSEC3_SHA1:
-            algorithm = "DSA-NSEC3-SHA1";
+            s = "DSA-NSEC3-SHA1";
             break;
         case DNSSEC_RSASHA1_NSEC3_SHA1:
-            algorithm = "RSASHA1-NSEC3-SHA1";
+            s = "RSASHA1-NSEC3-SHA1";
             break;
         case DNSSEC_RSASHA256:
-            algorithm = "RSA/SHA-256";
+            s = "RSA/SHA-256";
             break;
         case DNSSEC_RSASHA512:
-            algorithm = "RSA/SHA-512";
+            s = "RSA/SHA-512";
             break;
         case DNSSEC_ECC_GOST:
-            algorithm = "GOST R 34.10-2001";
+            s = "GOST R 34.10-2001";
             break;
         case DNSSEC_ECDSAP256SHA256:
-            algorithm = "ECDSA Curve P-256 with SHA-256";
+            s = "ECDSA Curve P-256 with SHA-256";
             break;
         case DNSSEC_ECDSAP384SHA384:
-            algorithm = "ECDSA Curve P-384 with SHA-384";
+            s = "ECDSA Curve P-384 with SHA-384";
             break;
         case DNSSEC_ED25519:
-            algorithm = "Ed25519";
+            s = "Ed25519";
             break;
         case DNSSEC_ED448:
-            algorithm = "Ed448";
+            s = "Ed448";
             break;
         case DNSSEC_INDIRECT:
-            algorithm = "Reserved for Indirect Keys";
+            s = "Reserved for Indirect Keys";
             break;
         case DNSSEC_PRIVATEDNS:
-            algorithm = "private algorithm";
+            s = "private s";
             break;
         case DNSSEC_PRIVATEOID:
-            algorithm = "private algorithm OID";
+            s = "private s OID";
             break;
         default:
-            algorithm = "unassigned/reserved";
+            s = "unassigned/reserved";
     }
 
-    return algorithm;
+    return s;
+}
+
+string dnssec_digest_type_to_str(DnsSecDigestType dnssec_digest_type)
+{
+    string s;
+    switch (dnssec_digest_type) {
+        case DNSSECDIGEST_RESERVED:
+            s = "reserved";
+            break;
+        case DNSSECDIGEST_SHA1:
+            s = "SHA-1";
+            break;
+        case DNSSECDIGEST_SHA256:
+            s = "SHA-256";
+            break;
+        case DNSSECDIGEST_GOSTR:
+            s = "GOST R 34.11-94";
+            break;
+        case DNSSECDIGEST_SHA384:
+            s = "SHA-384";
+            break;
+        default:
+            s = "unassigned";
+    }
+    return s;
 }
 
 string read_domain_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift)
@@ -293,6 +318,17 @@ string to_time(u_int32_t time)
     return string(buffer);
 }
 
+string to_hexa(u_char *data, u_int32_t count)
+{
+    stringstream ss;
+
+    for (u_int32_t i = 0; i < count; i++) {
+        ss << hex << static_cast<u_int16_t>(data[i]);
+    }
+
+    return ss.str();
+}
+
 string read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len)
 {
     string data;
@@ -306,24 +342,14 @@ string read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len)
     data.append(dnssec_algorithm_to_str((static_cast<DnsSecAlgorithmType>(dns_rd_rrsig->algorithm))).append(" "));
     data.append(to_string(dns_rd_rrsig->labels).append(" "));
     data.append(to_string(ntohl(dns_rd_rrsig->original_ttl)).append(" "));
-
     data.append(to_time(ntohl(dns_rd_rrsig->signature_expiration))).append(" ");
     data.append(to_time(ntohl(dns_rd_rrsig->signature_inception))).append(" ");
-
     data.append(to_string(ntohs(dns_rd_rrsig->key_tag)).append(" "));
     data.append(read_domain_name(dns_hdr, dns + sizeof(dns_rd_rrsig_t), &shift).append(" "));
 
     dns += sizeof(dns_rd_rrsig_t) + shift;
 
-    // ToDo: signature expiration
-    //       signature inception
-
-    for (u_int32_t i = 0; i < data_len - (shift + sizeof(dns_rd_rrsig_t)); i++) {
-        signature << hex << static_cast<u_int16_t>(reverse_bits(*dns));
-        dns++;
-    }
-
-    data.append(signature.str().substr(0, 16).append("..."));
+    data.append(to_hexa(dns, data_len - (shift + sizeof(dns_rd_rrsig_t))).substr(0, DIGEST_PRINT_LEN).append("..."));
 
     return data;
 }
@@ -431,6 +457,22 @@ string read_nsec(u_char *dns_hdr, u_char *dns)
     // ToDo: rozpoznavat vice typu dns zaznamu
 
     data.append(bit_maps_field);
+
+    return data;
+}
+
+string read_ds(u_char *dns, u_int16_t data_len)
+{
+    string data;
+    dns_rd_ds_t *dns_rd_ds = reinterpret_cast<dns_rd_ds_t *>(dns);
+
+    data.append(to_hexa(reinterpret_cast<u_char *>(&dns_rd_ds->key_tag), sizeof(dns_rd_ds->key_tag)).append(" "));
+    data.append(dnssec_algorithm_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_ds->algorithm)).append(" "));
+    data.append(dnssec_digest_type_to_str(static_cast<DnsSecDigestType>(dns_rd_ds->digest_type)).append(" "));
+
+    dns += sizeof(dns_rd_ds_t);
+
+    data.append(to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
 
     return data;
 }
@@ -579,12 +621,13 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             case DNS_DNSKEY:
+                // ToDo
                 data = "ToDo";
                 type = "DNSKEY";
                 break;
 
             case DNS_DS:
-                data = "ToDo";
+                data = read_ds(dns, ntohs(dns_ans->data_len));
                 type = "DS";
                 break;
 
@@ -599,7 +642,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
                 break;
 
             case DNS_NSEC:
-                // ToDo
                 data = read_nsec(reinterpret_cast<u_char *>(dns_hdr), dns);
                 type = "NSEC";
                 break;
@@ -643,7 +685,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
         fprintf(stderr, "    data = %s\n", data.c_str()); // debug
         cerr << name << " " << type << " " << data << endl << endl; // debug
 
-        if (ntohs(dns_ans->type) == DNS_RRSIG)
+//        if (ntohs(dns_ans->type) == DNS_DS)
             record = name.append(" ") + type.append(" ") + data.append(" ");
 
         auto search = result_map.find(record);

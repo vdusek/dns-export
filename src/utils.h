@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string>
 
+#define DIGEST_PRINT_LEN 20
+
 /**
  * All types of return codes.
  */

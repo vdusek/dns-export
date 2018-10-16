@@ -23,9 +23,9 @@ enum TypeDnsRecord {
     DNS_DS = 43, // (dnssec) ToDo
     DNS_MX = 15,
     DNS_NS = 2,
-    DNS_NSEC = 47, // (dnssec) ToDo
+    DNS_NSEC = 47,
     DNS_PTR = 12,
-    DNS_RRSIG = 46, // (dnssec) ToDo
+    DNS_RRSIG = 46,
     DNS_SOA = 6,
     DNS_SPF = 99,
     DNS_TXT = 16
@@ -51,6 +51,15 @@ enum DnsSecAlgorithmType {
     DNSSEC_PRIVATEDNS = 253,
     DNSSEC_PRIVATEOID = 254
     // Other values are reserved or unassigned
+};
+
+enum DnsSecDigestType {
+    DNSSECDIGEST_RESERVED = 0,
+    DNSSECDIGEST_SHA1 = 1,
+    DNSSECDIGEST_SHA256 = 2,
+    DNSSECDIGEST_GOSTR = 3,
+    DNSSECDIGEST_SHA384 = 4,
+    // Other values are unassigned
 };
 
 struct __attribute__((packed)) dns_header_t {
@@ -116,6 +125,13 @@ struct __attribute__((packed)) dns_rd_rrsig_t {
     // + Signature
 };
 
+struct __attribute__((packed)) dns_rd_ds_t {
+    u_int16_t key_tag;
+    u_char algorithm;
+    u_char digest_type;
+    // + Digest
+};
+
 void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet);
 
 std::string dns_record_to_str(TypeDnsRecord type_dns_record);
@@ -138,6 +154,7 @@ std::string read_nsec(u_char *dns_hdr, u_char *dns);
 
 std::string read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len);
 
+std::string read_ds(u_char *dns);
 
 
 
