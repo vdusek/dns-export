@@ -38,27 +38,27 @@ public:
     /**
      * Get resource arg
      */
-    std::string get_resource();
+    std::string resource();
 
     /**
      * Get interface arg
      */
-    std::string get_interface();
+    std::string interface();
 
     /**
      * Get resource arg
      */
-    std::string get_server();
+    std::string server();
 
     /**
      * Get timeout arg
      */
-    int get_timeout();
+    u_int timeout();
 
     /**
      * Get help arg
      */
-    bool get_help();
+    bool help();
 
     /**
      * Parse command line arguments.

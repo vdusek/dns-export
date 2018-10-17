@@ -8,562 +8,82 @@
 
 #include <unistd.h>
 #include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include <sys/socket.h>
 #include <pcap/pcap.h>
-#include <net/ethernet.h>
 #include <netinet/ether.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <linux/udp.h>
-#include <signal.h>
 
 #include <string>
 #include <iostream>
-#include <bitset>
-#include <vector>
 #include <unordered_map>
-#include <sstream>
-#include <iomanip>
-#include <ctime>
 
 #include "pcap_parser.h"
+#include "dns_parser.h"
 #include "utils.h"
 
 using namespace std;
 
 // debug
-u_int dns_cnt = 0,
-      pck_cnt = 0,
-      dns_ans_cnt = 0;
-
-int rr_count_total = 0;
+u_int pck_cnt = 0,
+      dns_cnt = 0,
+      udp_cnt = 0,
+      not_udp_cnt = 0,
+      ipv4_cnt = 0,
+      not_ipv4_cnt = 0;
 
 pcap_t *handle = nullptr;
-unordered_map<string, int> result_map;
+DnsParser dns_parser;
 
-string dns_record_to_str(TypeDnsRecord type_dns_record)
+
+PcapParser::PcapParser():
+    m_filter_exp("port 53"),
+    m_compiled_filter()
 {
-    string type;
-
-    switch (type_dns_record) {
-        case DNS_A:
-            type = "A";
-            break;
-        case DNS_AAAA:
-            type = "AAAA";
-            break;
-        case DNS_CNAME:
-            type = "CNAME";
-            break;
-        case DNS_DNSKEY:
-            type = "DNSKEY";
-            break;
-        case DNS_DS:
-            type = "DS";
-            break;
-        case DNS_MX:
-            type = "MX";
-            break;
-        case DNS_NS:
-            type = "NS";
-            break;
-        case DNS_NSEC:
-            type = "NSEC";
-            break;
-        case DNS_PTR:
-            type = "PTR";
-            break;
-        case DNS_RRSIG:
-            type = "RRSIG";
-            break;
-        case DNS_SOA:
-            type = "SOA";
-            break;
-        case DNS_SPF:
-            type = "SPF";
-            break;
-        case DNS_TXT:
-            type = "TXT";
-            break;
-        default:
-            type = "unknown";
-    }
-
-    return type;
 }
 
-string dnssec_algorithm_to_str(DnsSecAlgorithmType dnssec_algorithm_type)
-{
-    string s;
+PcapParser::~PcapParser() = default;
 
-    switch (dnssec_algorithm_type) {
-        case DNSSEC_DELETE:
-            s = "delete";
-            break;
-        case DNSSEC_RSAMD5:
-            s = "RSA/MD5";
-            break;
-        case DNSSEC_DH:
-            s = "Diffie-Hellman";
-            break;
-        case DNSSEC_DSA:
-            s = "DSA/SHA-1";
-            break;
-        case DNSSEC_RSASHA1:
-            s = "RSA/SHA-1";
-            break;
-        case DNSSEC_DSA_NSEC3_SHA1:
-            s = "DSA-NSEC3-SHA1";
-            break;
-        case DNSSEC_RSASHA1_NSEC3_SHA1:
-            s = "RSASHA1-NSEC3-SHA1";
-            break;
-        case DNSSEC_RSASHA256:
-            s = "RSA/SHA-256";
-            break;
-        case DNSSEC_RSASHA512:
-            s = "RSA/SHA-512";
-            break;
-        case DNSSEC_ECC_GOST:
-            s = "GOST R 34.10-2001";
-            break;
-        case DNSSEC_ECDSAP256SHA256:
-            s = "ECDSA Curve P-256 with SHA-256";
-            break;
-        case DNSSEC_ECDSAP384SHA384:
-            s = "ECDSA Curve P-384 with SHA-384";
-            break;
-        case DNSSEC_ED25519:
-            s = "Ed25519";
-            break;
-        case DNSSEC_ED448:
-            s = "Ed448";
-            break;
-        case DNSSEC_INDIRECT:
-            s = "Reserved for Indirect Keys";
-            break;
-        case DNSSEC_PRIVATEDNS:
-            s = "private s";
-            break;
-        case DNSSEC_PRIVATEOID:
-            s = "private s OID";
-            break;
-        default:
-            s = "unassigned/reserved";
-    }
-
-    return s;
-}
-
-string dnssec_digest_type_to_str(DnsSecDigestType dnssec_digest_type)
-{
-    string s;
-    switch (dnssec_digest_type) {
-        case DNSSECDIGEST_RESERVED:
-            s = "reserved";
-            break;
-        case DNSSECDIGEST_SHA1:
-            s = "SHA-1";
-            break;
-        case DNSSECDIGEST_SHA256:
-            s = "SHA-256";
-            break;
-        case DNSSECDIGEST_GOSTR:
-            s = "GOST R 34.11-94";
-            break;
-        case DNSSECDIGEST_SHA384:
-            s = "SHA-384";
-            break;
-        default:
-            s = "unassigned";
-    }
-    return s;
-}
-
-string read_domain_name(u_char *dns_hdr, u_char *dns, u_int32_t *shift)
-{
-    string name;
-    u_int32_t offset;
-    bool ptr = false;
-    *shift = 0;
-
-    while (*dns != '\0') {
-        /* "The significance of the compression label is as follows: the first 2 bits are set to 1,
-         * the 14 remaining bits describe the offset, i.e. the position of the compression target
-         * from the beginning of the DNS message." */
-        if (*dns >= 0b11000000) {
-            offset = (u_int32_t) ((*dns) * 0x100 + *(dns + 1) - 0xC000); // calculation of offset
-            dns = dns_hdr + offset;
-            ptr = true;
-        }
-
-        for (int cnt = *dns; cnt > 0; cnt--) {
-            dns++;
-            name += *dns;
-
-            if (!ptr) {
-                (*shift)++;
-            }
-        }
-
-        dns++;
-        name += '.';
-
-        if (!ptr) {
-            (*shift)++;
-        }
-    }
-
-    name.pop_back();
-    name += '\0';
-
-    if (ptr) {
-        (*shift) += 2;
-    }
-    else {
-        (*shift)++;
-    }
-
-    return name;
-}
-
-string read_ipv4(u_char *dns_reader)
-{
-    in_addr address;
-    memcpy(&address, dns_reader, sizeof(address));
-    char ipv4[INET_ADDRSTRLEN] = {0};
-    inet_ntop(AF_INET, &address, ipv4, INET_ADDRSTRLEN);
-    return static_cast<string> (ipv4);
-}
-
-string read_ipv6(u_char *dns_reader)
-{
-    in6_addr address;
-    memcpy(&address, dns_reader, sizeof(address));
-    char ipv6[INET6_ADDRSTRLEN] = {0};
-    inet_ntop(AF_INET6, &address, ipv6, INET6_ADDRSTRLEN);
-    return static_cast<string> (ipv6);
-}
-
-string read_mx(u_char *dns_hdr, u_char *dns)
-{
-    string data;
-    u_int32_t shift;
-    dns_rd_mx_t *dns_rd_mx = nullptr;
-
-    dns_rd_mx = (dns_rd_mx_t *) dns;
-
-    data = to_string(ntohs(dns_rd_mx->preference)).append(" ");
-    data.append(read_domain_name(dns_hdr, dns + sizeof(dns_rd_mx_t), &shift));
-
-    return data;
-}
-
-string read_soa(u_char *dns_hdr, u_char *dns)
-{
-    string data;
-    u_int32_t shift;
-    dns_rd_soa_t *dns_rd_soa = nullptr;
-
-    data = read_domain_name(dns_hdr, dns, &shift).append(" ");
-    dns += shift;
-
-    data.append(read_domain_name(dns_hdr, dns, &shift).append(" "));
-    dns += shift;
-
-    dns_rd_soa = reinterpret_cast<dns_rd_soa_t *>(dns);
-
-    data.append(to_string(ntohl(dns_rd_soa->serial)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->refresh)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->retry)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->expire)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->minimum)));
-
-    return data;
-}
-
-string read_txt(u_char *dns)
-{
-    string data;
-    while (*dns != '\0') {
-        data += *dns;
-        dns++;
-    }
-    return data;
-}
-
-u_int8_t reverse_bits(u_int8_t b) {
-    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-    return b;
-}
-
-string to_time(u_int32_t time)
-{
-    time_t raw_time = static_cast<time_t>(time);
-    struct tm *timeinfo = localtime(&raw_time);
-    char *buffer = (char*) malloc(200);
-    const char *format = "%Y-%m-%d %H:%M:%S";
-    strftime(buffer, 200, format, timeinfo);
-
-//    if (strftime(buffer, 200, format, timeinfo) == 0) {
-//        fprintf(stderr, "strftime returned 0");
-//        exit(EXIT_FAILURE);
-//    }
-
-    return string(buffer);
-}
-
-string to_hexa(u_char *data, u_int32_t count)
-{
-    stringstream ss;
-
-    for (u_int32_t i = 0; i < count; i++) {
-        ss << hex << static_cast<u_int16_t>(data[i]);
-    }
-
-    return ss.str();
-}
-
-string read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len)
-{
-    string data;
-    u_int32_t shift;
-    dns_rd_rrsig_t *dns_rd_rrsig = nullptr;
-    stringstream signature;
-
-    dns_rd_rrsig = reinterpret_cast<dns_rd_rrsig_t *>(dns);
-
-    data.append(dns_record_to_str(static_cast<TypeDnsRecord>(ntohs(dns_rd_rrsig->type_covered))).append(" "));
-    data.append(dnssec_algorithm_to_str((static_cast<DnsSecAlgorithmType>(dns_rd_rrsig->algorithm))).append(" "));
-    data.append(to_string(dns_rd_rrsig->labels).append(" "));
-    data.append(to_string(ntohl(dns_rd_rrsig->original_ttl)).append(" "));
-    data.append(to_time(ntohl(dns_rd_rrsig->signature_expiration))).append(" ");
-    data.append(to_time(ntohl(dns_rd_rrsig->signature_inception))).append(" ");
-    data.append(to_string(ntohs(dns_rd_rrsig->key_tag)).append(" "));
-    data.append(read_domain_name(dns_hdr, dns + sizeof(dns_rd_rrsig_t), &shift).append(" "));
-
-    dns += sizeof(dns_rd_rrsig_t) + shift;
-
-    data.append(to_hexa(dns, data_len - (shift + sizeof(dns_rd_rrsig_t))).substr(0, DIGEST_PRINT_LEN).append("..."));
-
-    return data;
-}
-
-string read_nsec(u_char *dns_hdr, u_char *dns)
-{
-    string data;
-    u_int32_t shift;
-
-    data = read_domain_name(dns_hdr, dns, &shift).append(" ");
-    dns += shift;
-
-    string bit_maps_field;
-
-    u_int16_t num_bytes = ntohs(*reinterpret_cast<u_int16_t *>(dns));
-    dns += 2;
-
-    bitset<8> byte;
-
-    // 0 - 7
-    if (num_bytes > 0) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(1))
-            bit_maps_field.append("A ");
-        if (byte.test(2))
-            bit_maps_field.append("NS ");
-        if (byte.test(5))
-            bit_maps_field.append("CNAME ");
-        if (byte.test(6))
-            bit_maps_field.append("SOA ");
-    }
-    dns++;
-
-    // 8 - 15
-    if (num_bytes > 1) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(4))
-            bit_maps_field.append("PTR ");
-        if (byte.test(7))
-            bit_maps_field.append("MX ");
-    }
-    dns++;
-
-    // 16 - 23
-    if (num_bytes > 2) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(0))
-            bit_maps_field.append("TXT ");
-    }
-    dns++;
-
-    // 24 - 31
-    if (num_bytes > 3) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(4))
-            bit_maps_field.append("AAAA ");
-    }
-    dns++;
-
-    // 32 - 39
-    dns++;
-
-    // 40 - 47
-    if (num_bytes > 5) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(3))
-            bit_maps_field.append("DS ");
-        if (byte.test(6))
-            bit_maps_field.append("RRSIG ");
-        if (byte.test(7))
-            bit_maps_field.append("NSEC ");
-    }
-    dns++;
-
-    // 48 - 55
-    if (num_bytes > 6) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(0))
-            bit_maps_field.append("DNSKEY ");
-    }
-    dns++;
-
-    // 56 - 63
-    dns++;
-
-    // 64 - 71
-    dns++;
-
-    // 72 - 79
-    dns++;
-
-    // 80 - 87
-    dns++;
-
-    // 88 - 95
-    dns++;
-
-    // 96 - 103
-    if (num_bytes > 12) {
-        byte = bitset<8>(reverse_bits(*dns));
-        if (byte.test(3))
-            bit_maps_field.append("SPF ");
-    }
-
-    // ToDo: rozpoznavat vice typu dns zaznamu
-
-    data.append(bit_maps_field);
-
-    return data;
-}
-
-string read_ds(u_char *dns, u_int16_t data_len)
-{
-    string data;
-    dns_rd_ds_t *dns_rd_ds = reinterpret_cast<dns_rd_ds_t *>(dns);
-
-    data.append(to_hexa(reinterpret_cast<u_char *>(&dns_rd_ds->key_tag), sizeof(dns_rd_ds->key_tag)).append(" "));
-    data.append(dnssec_algorithm_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_ds->algorithm)).append(" "));
-    data.append(dnssec_digest_type_to_str(static_cast<DnsSecDigestType>(dns_rd_ds->digest_type)).append(" "));
-
-    dns += sizeof(dns_rd_ds_t);
-
-    data.append(to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
-
-    return data;
-}
-
-string read_dnskey(u_char *dns, u_int16_t data_len)
-{
-    string data;
-    dns_rd_dnskey_t *dns_rd_dnskey = reinterpret_cast<dns_rd_dnskey_t *>(dns);
-
-    data.append(to_hexa(reinterpret_cast<u_char *>(&dns_rd_dnskey->flags), sizeof(dns_rd_dnskey->flags)).append(" "));
-    data.append(to_string(dns_rd_dnskey->protocol));
-    data.append(dnssec_algorithm_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_dnskey->algorithm)).append(" "));
-
-    dns += sizeof(dns_rd_dnskey_t);
-
-    data.append(to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
-
-    return data;
-}
-
-void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet)
+void PcapParser::packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet)
 {
     (void) args; (void) packet_hdr; // Stop yelling at me!
 
-    struct ether_header *eth     = nullptr;
-    struct ip           *ip_     = nullptr;
-    struct udphdr       *udp     = nullptr;
-    dns_header_t        *dns_hdr = nullptr;
-    dns_rr_t            *dns_ans = nullptr;
-    u_char              *dns     = nullptr;
+    ether_header *eth = nullptr;
+    ip           *ip_ = nullptr;
+    udphdr       *udp = nullptr;
 
     const u_int eth_len     = 14,
                 udp_len     = 8;
 
     u_int ip_len;
-
-    u_int32_t shift;
-
-    string name,
-           data,
-           type;
+    string record;
 
     pck_cnt++; // debug
     eth = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
 
-    /* Filter just IP frames */
+    /* Filter just IPv4 frames */
     if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
+        not_ipv4_cnt++;
         cerr << "Not an IP frame" << endl;
         return;
     }
+    ipv4_cnt++;
 
     ip_ = reinterpret_cast<ip *>(reinterpret_cast<char *>(eth) + eth_len);
     ip_len = ip_->ip_hl * 4;
 
     /* Filter just UDP communication */
     // ToDo: parse TCP packets as well
-    if (ip_->ip_p != IPPROTO_UDP) {
+    if (ip_->ip_p == IPPROTO_UDP) {
+        udp_cnt++;
+    }
+    else {
+        not_udp_cnt++;
         cerr << "Not an UDP datagram" << endl;
         return;
     }
 
     udp = reinterpret_cast<udphdr *>(reinterpret_cast<char *>(ip_) + ip_len);
-
-    /* Filter just communication with source port 53 */
-    if (ntohs(udp->source) != 53) {
-        cerr << "Not source port 53" << endl;
-        return;
-    }
-
-    dns_hdr = reinterpret_cast<dns_header_t *>(reinterpret_cast<char *>(udp) + udp_len);
-
-    /* Filter just responses */
-    if (!(ntohs(dns_hdr->flags) & 0b1000000000000000)) {
-        cerr << "Not a response" << endl;
-        return;
-    }
-
-    /* Filter just no error responses */
-    if (ntohs(dns_hdr->flags) & 0b0000000000001111) {
-        cerr << "There's an error in the response" << endl;
-        return;
-    }
-
-    /* Filter just responses with 1 question (other makes no sense)
-     * source: https://stackoverflow.com/questions/7565300/identifying-dns-packets */
-    if (ntohs(dns_hdr->qd_count) != 1) {
-        cerr << "There's no 1 question" << endl;
-        return;
-    }
-
-    dns_cnt++;
 
     fprintf(stderr, "------------------------------------------------------------------------------\n\n");
     fprintf(stderr, "Packet no. %d\n", pck_cnt);
@@ -577,218 +97,104 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_
     fprintf(stderr, "IP dst = %s", inet_ntoa(ip_->ip_dst));
     fprintf(stderr, ", protocol UDP (%d)\n\n", ip_->ip_p);
 
-    fprintf(stderr, "DNS header\n");
-    fprintf(stderr, "    id = 0x%04x\n", ntohs(dns_hdr->id));
-    fprintf(stderr, "    flags = 0x%04x\n", ntohs(dns_hdr->flags));
-    fprintf(stderr, "    qd_count = %d\n", ntohs(dns_hdr->qd_count));
-    fprintf(stderr, "    an_count = %d\n", ntohs(dns_hdr->an_count));
-    fprintf(stderr, "    ns_count = %d\n", ntohs(dns_hdr->ns_count));
-    fprintf(stderr, "    ar_count = %d\n\n", ntohs(dns_hdr->ar_count));
-
-    dns = reinterpret_cast<u_char *>(dns_hdr) + sizeof(dns_header_t);
-
-    /* Skip query (name + 2 + 2) */
-    while (*dns != '\0') {
-        dns++;
-    }
-    dns += (1 + sizeof(dns_query_t));
-
-    string record;
-
-    // Mozna prochazet i zbyle typy records (?)
-    int rr_count = ntohs(dns_hdr->an_count) + ntohs(dns_hdr->ns_count); // + ntohs(dns_hdr->ar_count);
-    rr_count_total += rr_count;
-
-    /* For every answer */
-    for (int i = 0; i < rr_count; i++) {
-        dns_ans_cnt++;
-
-        fprintf(stderr, "DNS answer (%d)\n", i + 1);
-
-        name = read_domain_name((u_char *) dns_hdr, dns, &shift);
-
-        fprintf(stderr, "    domain_name = %s\n", name.c_str());
-
-        dns += shift;
-        dns_ans = reinterpret_cast<dns_rr_t *>(dns);
-
-        fprintf(stderr, "    type = %d\n", ntohs(dns_ans->type));
-        fprintf(stderr, "    class = %d\n", ntohs(dns_ans->class_));
-        fprintf(stderr, "    ttl = %d\n", ntohl(dns_ans->ttl));
-        fprintf(stderr, "    data_len = %d\n", ntohs(dns_ans->data_len));
-
-        dns += sizeof(dns_rr_t);
-
-        switch (ntohs(dns_ans->type)) {
-
-            case DNS_A:
-                data = read_ipv4(dns);
-                type = "A";
-                break;
-
-            case DNS_AAAA:
-                data = read_ipv6(dns);
-                type = "AAAA";
-                break;
-
-            case DNS_CNAME:
-                data = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-                type = "CNAME";
-                break;
-
-            // ToDo: test this case
-            case DNS_DNSKEY:
-                data = read_dnskey(dns, ntohs(dns_ans->data_len));
-                type = "DNSKEY";
-                break;
-
-            case DNS_DS:
-                data = read_ds(dns, ntohs(dns_ans->data_len));
-                type = "DS";
-                break;
-
-            case DNS_MX:
-                data = read_mx(reinterpret_cast<u_char *>(dns_hdr), dns);
-                type = "MX";
-                break;
-
-            case DNS_NS:
-                data = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-                type = "NS";
-                break;
-
-            case DNS_NSEC:
-                data = read_nsec(reinterpret_cast<u_char *>(dns_hdr), dns);
-                type = "NSEC";
-                break;
-
-            case DNS_PTR:
-                data = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-                type = "PTR";
-                break;
-
-            case DNS_RRSIG:
-                data = read_rrsig(reinterpret_cast<u_char *>(dns_hdr), dns, ntohs(dns_ans->data_len));
-                type = "RRSIG";
-                break;
-
-            case DNS_SOA:
-                data = read_soa(reinterpret_cast<u_char *>(dns_hdr), dns);
-                type = "SOA";
-                break;
-
-            // ToDo: test this case
-            case DNS_SPF:
-                data = read_txt(dns);
-                type = "SPF";
-                break;
-
-            // ToDo: test this case
-            case DNS_TXT:
-                data = read_txt(dns);
-                type = "TXT";
-                break;
-
-            default:
-                data = "unknown_data";
-                type = "unknown_type";
-                break;
-        }
-        dns += ntohs(dns_ans->data_len);
-
-        fprintf(stderr, "    data = %s\n", data.c_str()); // debug
-        cerr << name << " " << type << " " << data << endl << endl; // debug
-
-        record = name.append(" ") + type.append(" ") + data.append(" ");
-
-        auto search = result_map.find(record);
-
-        if (search != result_map.end()) {
-            result_map[record]++;
-        }
-        else {
-            result_map[record] = 1;
-        }
-    }
-
-//    if (ntohs(dns_hdr->id) == 0x5443) {
-//        cout << record << endl;
-//        exit(0);
-//    }
+    dns_cnt++;
+    dns_parser.parse(reinterpret_cast<u_int8_t *>(udp) + udp_len);
 }
 
-PcapParser::PcapParser(std::string filename, std::string interface):
-    m_filename(filename),
-    m_interface(interface)
-{
-}
-
-PcapParser::~PcapParser()
-{
-}
-
-void PcapParser::parse_file()
-{
-    char error_buffer[PCAP_ERRBUF_SIZE];
-    pcap_t *handle = nullptr;
-
-    signal(SIGUSR1, signal_handler);
-
-    handle = pcap_open_offline(m_filename.c_str(), error_buffer);
-    if (handle == nullptr) {
-        fprintf(stderr, "Could not open device %s: %s\n", m_interface.c_str(), error_buffer);
-        return;
-    }
-    pcap_loop(handle, 0, packet_handler, nullptr);
-    pcap_close(handle);
-
-    // ToDo: not print, but send to syslog
-    for (const auto &elem : result_map) {
-        cout << elem.first << elem.second << endl;
-    }
-
-    cerr << endl;
-    cerr << "Summary: " << endl;
-    cerr << "    Number of packets = " << pck_cnt << endl;
-    cerr << "    DNS = " << dns_cnt << endl;
-    cerr << "    DNS answers = " << dns_ans_cnt << endl;
-}
-
-void PcapParser::parse_interface(u_int timeout)
+void PcapParser::parse_file(std::string filename)
 {
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
 
+    signal(SIGUSR1, signal_handler);
+
+    // Open the file for sniffing
+    if ((handle = pcap_open_offline(filename.c_str(), error_buffer)) == nullptr) {
+        fprintf(stderr, "Could not open file %s: %s\n", filename.c_str(), error_buffer);
+        return;
+    }
+
+    // Compile the filter
+    if (pcap_compile(handle, &m_compiled_filter, m_filter_exp.c_str(), 0, 0) == EOF) {
+        fprintf(stderr, "Couldn't parse filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
+        return;
+    }
+
+    // Set the filter to the packet capture handle
+    if (pcap_setfilter(handle, &m_compiled_filter) == EOF) {
+        fprintf(stderr, "Couldn't install filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
+        return;
+    }
+
+    // Read packets from the file in the infinite loop (count == 0)
+    // Incoming packets are processed by function packet_handler()
+    pcap_loop(handle, 0, packet_handler, nullptr);
+
+    // Close the capture device and deallocate resources
+    pcap_close(handle);
+
+    cerr << endl;
+    cerr << "Summary: " << endl;
+    cerr << "    Number of captured packets = " << pck_cnt << endl;
+    cerr << "    Number of IPv4 datagrams = " << ipv4_cnt << endl;
+    cerr << "    Number of other datagrams = " << not_ipv4_cnt << endl;
+    cerr << "    Number of UDP packets = " << udp_cnt<< endl;
+    cerr << "    Number of TCP (not UDP) packets = " << not_udp_cnt << endl;
+    cerr << "    Number of DNS packets = " << dns_cnt << endl;
+    cerr << "    Number of DNS answers = " << dns_ans_cnt << endl;
+    cerr << "=======================================================================" << endl;
+}
+
+void PcapParser::parse_interface(std::string interface, u_int timeout)
+{
+    char error_buffer[PCAP_ERRBUF_SIZE] = {0};
     alarm(timeout);
     signal(SIGALRM, signal_handler);
     signal(SIGUSR1, signal_handler);
 
-    /* Open device for live capture */
-    handle = pcap_open_live(m_interface.c_str(), BUFSIZ, 1, 1000, error_buffer);
-    if (handle == nullptr) {
-        fprintf(stderr, "Could not open device %s: %s\n", m_interface.c_str(), error_buffer);
+    bpf_u_int32 mask;          /* The netmask of our sniffing device */
+    bpf_u_int32 net;           /* The IP of our sniffing device */
+
+    // Get IP address and mask of the sniffing interface
+    if (pcap_lookupnet(interface.c_str(), &net, &mask, error_buffer) == -1) {
+        fprintf(stderr, "Can't get netmask for device %s\n", interface.c_str());
+        net = 0;
+        mask = 0;
         return;
     }
-    pcap_loop(handle, 0, packet_handler, nullptr);
-    pcap_close(handle);
 
-    // ToDo: not print, but send to syslog
-    for (const auto &elem : result_map) {
-        cout << elem.first << elem.second << endl;
+    // Open the interface for live sniffing
+    if ((handle = pcap_open_live(interface.c_str(), BUFSIZ, 1, 1000, error_buffer)) == nullptr) {
+        fprintf(stderr, "Could not open device %s: %s\n", interface.c_str(), error_buffer);
+        return;
     }
+
+    // Compile the filter
+    if (pcap_compile(handle, &m_compiled_filter, m_filter_exp.c_str(), 0, net) == EOF) {
+        fprintf(stderr, "Couldn't parse filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
+        return;
+    }
+
+    // Set the filter to the packet capture handle
+    if (pcap_setfilter(handle, &m_compiled_filter) == EOF) {
+        fprintf(stderr, "Couldn't install filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
+        return;
+    }
+
+    // Read packets from the interface in the infinite loop (count == 0)
+    // Incoming packets are processed by function packet_handler()
+    pcap_loop(handle, 0, packet_handler, nullptr);
+
+    // Close the capture device and deallocate resources
+    pcap_close(handle);
 
     cerr << endl;
     cerr << "Summary: " << endl;
-    cerr << "    Number of packets = " << pck_cnt << endl;
-    cerr << "    DNS = " << dns_cnt << endl;
-    cerr << "    DNS answers = " << dns_ans_cnt << endl;
+    cerr << "    Number of captured packets = " << pck_cnt << endl;
+    cerr << "    Number of IPv4 datagrams = " << ipv4_cnt << endl;
+    cerr << "    Number of other datagrams = " << not_ipv4_cnt << endl;
+    cerr << "    Number of UDP packets = " << udp_cnt<< endl;
+    cerr << "    Number of TCP (not UDP) packets = " << not_udp_cnt << endl;
+    cerr << "    Number of DNS packets = " << dns_cnt << endl;
+    cerr << "    Number of DNS answers = " << dns_ans_cnt << endl;
+    cerr << "=======================================================================" << endl;
 }
-
-
-// DEBUG
-//cerr << "case DNS_CNAME" << endl;
-//cerr << "12 " << sizeof(dns_header_t) << endl;
-//cerr << "2 " << sizeof(dns_header_flags_t) << endl;
-//cerr << "4 " << sizeof(dns_query_t) << endl;
-//cerr << "10 " << sizeof(dns_rr_t) << endl;
-//cerr << "2 " << sizeof(dns_rd_mx_t) << endl;
-//cerr << "20 " << sizeof(dns_rd_soa_t) << endl;

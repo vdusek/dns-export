@@ -7,7 +7,8 @@
 // File: main.cpp
 
 #include <iostream>
-#include <string>
+#include <unordered_map>
+
 #include "utils.h"
 #include "arg_parser.h"
 #include "pcap_parser.h"
@@ -16,6 +17,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+    // Parse command line arguments
     ArgParser arg_parser(argc, argv);
     try {
         arg_parser.parse();
@@ -24,21 +26,28 @@ int main(int argc, char **argv)
         error(RET_INV_ARGS, "dns-export: " + string(exc.what()));
     }
 
-    // Debug
+    // Debug print
     arg_parser.print();
 
-    if (arg_parser.get_help()) {
+    // Print help if needed
+    if (arg_parser.help()) {
         print_help();
         return 0;
     }
 
-    PcapParser pcap_parser(arg_parser.get_resource(), arg_parser.get_interface());
-
-    if (arg_parser.get_resource() != "") {
-        pcap_parser.parse_file();
+    // Parse pcap file or sniff on network interface
+    PcapParser pcap_parser;
+    if (!arg_parser.resource().empty()) {
+        pcap_parser.parse_file(arg_parser.resource());
     }
-    else if (arg_parser.get_interface() != "") {
-        pcap_parser.parse_interface(arg_parser.get_timeout());
+    else if (!arg_parser.interface().empty()) {
+        pcap_parser.parse_interface(arg_parser.interface(), arg_parser.timeout());
+    }
+
+    // Send statistics to syslog
+    // ToDo: not print, but send to syslog
+    for (const auto &elem : result_map) {
+        cout << elem.first << elem.second << endl;
     }
 
     return 0;

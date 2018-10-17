@@ -6,9 +6,11 @@
 // Date: 30/9/2018
 // File: config.cpp
 
+#include <getopt.h>
+
 #include <iostream>
 #include <stdexcept>
-#include <getopt.h>
+
 #include "utils.h"
 #include "arg_parser.h"
 
@@ -25,31 +27,29 @@ ArgParser::ArgParser(int argc, char **argv):
 {
 }
 
-ArgParser::~ArgParser()
-{
-}
+ArgParser::~ArgParser() = default;
 
-std::string ArgParser::get_resource()
+std::string ArgParser::resource()
 {
     return m_resource;
 }
 
-std::string ArgParser::get_interface()
+std::string ArgParser::interface()
 {
     return m_interface;
 }
 
-std::string ArgParser::get_server()
+std::string ArgParser::server()
 {
     return m_server;
 }
 
-int ArgParser::get_timeout()
+u_int ArgParser::timeout()
 {
     return m_timeout;
 }
 
-bool ArgParser::get_help()
+bool ArgParser::help()
 {
     return m_help;
 }

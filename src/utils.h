@@ -10,8 +10,11 @@
 
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
-#define DIGEST_PRINT_LEN 20
+const int DIGEST_PRINT_LEN = 20;
+
+extern std::unordered_map<std::string, int> result_map;
 
 /**
  * All types of return codes.
@@ -44,14 +47,37 @@ void print_help();
  */
 void error(RetCode ret_code, std::string message);
 
+/**
+ * Handle signals.
+ */
 void signal_handler(int sig);
+
+/**
+ * Reverse bits in a byte.
+ */
+u_int8_t reverse_bits(u_int8_t b);
+
+/**
+ * Convert binary data to '%Y-%m-%d %H:%M:%S' time format and return it as a string.
+ */
+std::string bin_to_time(u_int32_t time);
+
+/**
+ * Convert binary data to hexadecimal format and return it as a string.
+ */
+std::string bin_to_hexa(u_char *data, u_int count);
+
+/**
+ * Convert domain name in 3www6google3com format to www.google.com format and return it as a string.
+ */
+std::string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift);
 
 /**
  * Exception for arguments failures.
  */
 class ArgumentException: public std::invalid_argument {
 public:
-    ArgumentException(const std::string &message): std::invalid_argument(message) {}
+    explicit ArgumentException(const std::string &message): std::invalid_argument(message) {}
 };
 
 /**
