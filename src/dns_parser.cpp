@@ -22,6 +22,7 @@
 
 using namespace std;
 
+// debug
 int rr_count_total = 0;
 int dns_ans_cnt = 0;
 
@@ -29,7 +30,172 @@ DnsParser::DnsParser() = default;
 
 DnsParser::~DnsParser() = default;
 
-string DnsParser::dns_record_to_str(TypeDnsRecord type_dns_record)
+void DnsParser::parse(u_char *packet)
+{
+    dns_header_t *dns_hdr = nullptr;
+    dns_rr_t     *dns_rr  = nullptr;
+    u_char       *dns     = nullptr;
+
+    string name, type, data, record;
+
+    u_int shift;
+
+    dns_hdr = reinterpret_cast<dns_header_t *>(packet);
+
+    // Filter just responses
+    if (!(ntohs(dns_hdr->flags) & 0b1000000000000000)) {
+        return;
+    }
+
+    // Filter just no error responses
+    if (ntohs(dns_hdr->flags) & 0b0000000000001111) {
+        return;
+    }
+
+    // Filter just responses with 1 question, others make no sense
+    if (ntohs(dns_hdr->qd_count) != 1) {
+        return;
+    }
+
+    // debug
+    fprintf(stderr, "DNS header\n");
+    fprintf(stderr, "    id = 0x%04x\n", ntohs(dns_hdr->id));
+    fprintf(stderr, "    flags = 0x%04x\n", ntohs(dns_hdr->flags));
+    fprintf(stderr, "    qd_count = %d\n", ntohs(dns_hdr->qd_count));
+    fprintf(stderr, "    an_count = %d\n", ntohs(dns_hdr->an_count));
+    fprintf(stderr, "    ns_count = %d\n", ntohs(dns_hdr->ns_count));
+    fprintf(stderr, "    ar_count = %d\n\n", ntohs(dns_hdr->ar_count));
+
+    dns = reinterpret_cast<u_char *>(dns_hdr) + sizeof(dns_header_t);
+
+    // Skip query (name + sizeof(query)
+    while (*(++dns) != '\0');
+    dns += (1 + sizeof(dns_query_t));
+
+    // ToDo: go through all type of resource records?
+    int rr_count = ntohs(dns_hdr->an_count) + ntohs(dns_hdr->ns_count) + ntohs(dns_hdr->ar_count);
+    rr_count_total += rr_count;
+
+    // For every resource record
+    for (int i = 0; i < rr_count; i++) {
+        dns_ans_cnt++;
+
+        fprintf(stderr, "DNS answer (%d)\n", i + 1);
+
+        name = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
+
+        fprintf(stderr, "    domain_name = %s\n", name.c_str());
+
+        dns += shift;
+        dns_rr = reinterpret_cast<dns_rr_t *>(dns);
+
+        fprintf(stderr, "    type = %d\n", ntohs(dns_rr->type));
+        fprintf(stderr, "    class = %d\n", ntohs(dns_rr->class_));
+        fprintf(stderr, "    ttl = %d\n", ntohl(dns_rr->ttl));
+        fprintf(stderr, "    data_len = %d\n", ntohs(dns_rr->data_len));
+
+        dns += sizeof(dns_rr_t);
+
+        switch (ntohs(dns_rr->type)) {
+
+            case DNS_A:
+                data = parse_record_a(dns);
+                type = "A";
+                break;
+
+            case DNS_AAAA:
+                data = parse_record_aaaa(dns);
+                type = "AAAA";
+                break;
+
+            case DNS_CNAME:
+                data = parse_record_cname(reinterpret_cast<u_char *>(dns_hdr), dns);
+                type = "CNAME";
+                break;
+
+            // ToDo: test this case
+            case DNS_DNSKEY:
+                data = parse_record_dnskey(dns, ntohs(dns_rr->data_len));
+                type = "DNSKEY";
+                break;
+
+            case DNS_DS:
+                data = parse_record_ds(dns, ntohs(dns_rr->data_len));
+                type = "DS";
+                break;
+
+            case DNS_MX:
+                data = parse_record_mx(reinterpret_cast<u_char *>(dns_hdr), dns);
+                type = "MX";
+                break;
+
+            case DNS_NS:
+                data = parse_record_ns(reinterpret_cast<u_char *>(dns_hdr), dns);
+                type = "NS";
+                break;
+
+            case DNS_NSEC:
+                data = parse_record_nsec(reinterpret_cast<u_char *>(dns_hdr), dns);
+                type = "NSEC";
+                break;
+
+            case DNS_OPT:
+                data = parse_record_opt();
+                type = "OPT";
+                return;
+
+            case DNS_PTR:
+                data = parse_record_ptr(reinterpret_cast<u_char *>(dns_hdr), dns);
+                type = "PTR";
+                break;
+
+            case DNS_RRSIG:
+                data = parse_record_rrsig(reinterpret_cast<u_char *>(dns_hdr), dns, ntohs(dns_rr->data_len));
+                type = "RRSIG";
+                break;
+
+            case DNS_SOA:
+                data = parse_record_soa(reinterpret_cast<u_char *>(dns_hdr), dns);
+                type = "SOA";
+                break;
+
+            // ToDo: test this case
+            case DNS_SPF:
+                data = parse_record_txt_spf(dns);
+                type = "SPF";
+                break;
+
+            // ToDo: test this case
+            case DNS_TXT:
+                data = parse_record_txt_spf(dns);
+                type = "TXT";
+                break;
+
+            // ToDo: when unknown DNS record, maybe throw away whole packet, it could cause a problem
+            default:
+                data = "unknown_data";
+                type = "unknown_type";
+                break;
+        }
+        dns += ntohs(dns_rr->data_len);
+
+        fprintf(stderr, "    data = %s\n", data.c_str()); // debug
+        cerr << "RESULT:\n" << name << " " << type << " " << data << endl << endl; // debug
+
+        record = name.append(" ") + type.append(" ") + data.append(" ");
+
+        auto search = result_map.find(record);
+
+        if (search != result_map.end()) {
+            result_map[record]++;
+        }
+        else {
+            result_map[record] = 1;
+        }
+    }
+}
+
+string DnsParser::resource_type_to_str(TypeDnsRecord type_dns_record)
 {
     switch (type_dns_record) {
         case DNS_A:
@@ -48,6 +214,8 @@ string DnsParser::dns_record_to_str(TypeDnsRecord type_dns_record)
             return "NS";
         case DNS_NSEC:
             return "NSEC";
+        case DNS_OPT:
+            return "OPT";
         case DNS_PTR:
             return "PTR";
         case DNS_RRSIG:
@@ -63,7 +231,7 @@ string DnsParser::dns_record_to_str(TypeDnsRecord type_dns_record)
     }
 }
 
-string DnsParser::dnssec_algorithm_to_str(DnsSecAlgorithmType dnssec_algorithm_type)
+string DnsParser::algorithm_type_to_str(DnsSecAlgorithmType dnssec_algorithm_type)
 {
     switch (dnssec_algorithm_type) {
         case DNSSEC_DELETE:
@@ -105,7 +273,7 @@ string DnsParser::dnssec_algorithm_to_str(DnsSecAlgorithmType dnssec_algorithm_t
     }
 }
 
-string DnsParser::dnssec_digest_type_to_str(DnsSecDigestType dnssec_digest_type)
+string DnsParser::digest_type_to_str(DnsSecDigestType dnssec_digest_type)
 {
     switch (dnssec_digest_type) {
         case DNSSECDIGEST_RESERVED:
@@ -123,25 +291,63 @@ string DnsParser::dnssec_digest_type_to_str(DnsSecDigestType dnssec_digest_type)
     }
 }
 
-string DnsParser::read_ipv4(u_char *dns_reader)
+string DnsParser::parse_record_a(u_char *dns)
 {
     in_addr address;
-    memcpy(&address, dns_reader, sizeof(address));
+    memcpy(&address, dns, sizeof(address));
     char ipv4[INET_ADDRSTRLEN] = {0};
     inet_ntop(AF_INET, &address, ipv4, INET_ADDRSTRLEN);
     return static_cast<string> (ipv4);
 }
 
-string DnsParser::read_ipv6(u_char *dns_reader)
+string DnsParser::parse_record_aaaa(u_char *dns)
 {
     in6_addr address;
-    memcpy(&address, dns_reader, sizeof(address));
+    memcpy(&address, dns, sizeof(address));
     char ipv6[INET6_ADDRSTRLEN] = {0};
     inet_ntop(AF_INET6, &address, ipv6, INET6_ADDRSTRLEN);
     return static_cast<string> (ipv6);
 }
 
-string DnsParser::read_mx(u_char *dns_hdr, u_char *dns)
+string DnsParser::parse_record_cname(u_char *dns_hdr, u_char *dns)
+{
+    u_int shift;
+    return read_domain_name(dns_hdr, dns, &shift);
+}
+
+string DnsParser::parse_record_dnskey(u_char *dns, u_int data_len)
+{
+    string data;
+    auto *dns_rd_dnskey = reinterpret_cast<dns_rd_dnskey_t *>(dns);
+
+    data.append(bin_to_hexa(reinterpret_cast<u_char *>(&dns_rd_dnskey->flags), sizeof(dns_rd_dnskey->flags)).append(" "));
+    data.append(to_string(dns_rd_dnskey->protocol));
+    data.append(algorithm_type_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_dnskey->algorithm)).append(" "));
+
+    dns += sizeof(dns_rd_dnskey_t);
+
+    data.append(bin_to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
+
+    return data;
+}
+
+string DnsParser::parse_record_ds(u_char *dns, u_int data_len)
+{
+    string data;
+    auto *dns_rd_ds = reinterpret_cast<dns_rd_ds_t *>(dns);
+
+    data.append(bin_to_hexa(reinterpret_cast<u_char *>(&dns_rd_ds->key_tag), sizeof(dns_rd_ds->key_tag)).append(" "));
+    data.append(algorithm_type_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_ds->algorithm)).append(" "));
+    data.append(digest_type_to_str(static_cast<DnsSecDigestType>(dns_rd_ds->digest_type)).append(" "));
+
+    dns += sizeof(dns_rd_ds_t);
+
+    data.append(bin_to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
+
+    return data;
+}
+
+string DnsParser::parse_record_mx(u_char *dns_hdr, u_char *dns)
 {
     string data;
     u_int shift;
@@ -154,62 +360,13 @@ string DnsParser::read_mx(u_char *dns_hdr, u_char *dns)
     return data;
 }
 
-string DnsParser::read_soa(u_char *dns_hdr, u_char *dns)
+string DnsParser::parse_record_ns(u_char *dns_hdr, u_char *dns)
 {
-    string data;
     u_int shift;
-
-    data = read_domain_name(dns_hdr, dns, &shift).append(" ");
-    dns += shift;
-
-    data.append(read_domain_name(dns_hdr, dns, &shift).append(" "));
-    dns += shift;
-
-    auto *dns_rd_soa = reinterpret_cast<dns_rd_soa_t *>(dns);
-
-    data.append(to_string(ntohl(dns_rd_soa->serial)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->refresh)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->retry)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->expire)).append(" "));
-    data.append(to_string(ntohl(dns_rd_soa->minimum)));
-
-    return data;
+    return read_domain_name(dns_hdr, dns, &shift);
 }
 
-string DnsParser::read_txt(u_char *dns)
-{
-    string data;
-    while (*dns != '\0') {
-        data += *dns;
-        dns++;
-    }
-    return data;
-}
-
-string DnsParser::read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len)
-{
-    string data;
-    u_int shift;
-
-    auto *dns_rd_rrsig = reinterpret_cast<dns_rd_rrsig_t *>(dns);
-
-    data.append(dns_record_to_str(static_cast<TypeDnsRecord>(ntohs(dns_rd_rrsig->type_covered))).append(" "));
-    data.append(dnssec_algorithm_to_str((static_cast<DnsSecAlgorithmType>(dns_rd_rrsig->algorithm))).append(" "));
-    data.append(to_string(dns_rd_rrsig->labels).append(" "));
-    data.append(to_string(ntohl(dns_rd_rrsig->original_ttl)).append(" "));
-    data.append(bin_to_time(ntohl(dns_rd_rrsig->signature_expiration))).append(" ");
-    data.append(bin_to_time(ntohl(dns_rd_rrsig->signature_inception))).append(" ");
-    data.append(to_string(ntohs(dns_rd_rrsig->key_tag)).append(" "));
-    data.append(read_domain_name(dns_hdr, dns + sizeof(dns_rd_rrsig_t), &shift).append(" "));
-
-    dns += sizeof(dns_rd_rrsig_t) + shift;
-
-    data.append(bin_to_hexa(dns, data_len - (shift + sizeof(dns_rd_rrsig_t))).substr(0, DIGEST_PRINT_LEN).append("..."));
-
-    return data;
-}
-
-string DnsParser::read_nsec(u_char *dns_hdr, u_char *dns)
+string DnsParser::parse_record_nsec(u_char *dns_hdr, u_char *dns)
 {
     string data;
     u_int shift;
@@ -309,215 +466,75 @@ string DnsParser::read_nsec(u_char *dns_hdr, u_char *dns)
             bit_maps_field.append("SPF ");
     }
 
-    // ToDo: rozpoznavat vice typu dns zaznamu
+    // ToDo: determine more types of DNS records?
 
     data.append(bit_maps_field);
 
     return data;
 }
 
-string DnsParser::read_ds(u_char *dns, u_int16_t data_len)
+string DnsParser::parse_record_opt()
 {
-    string data;
-    auto *dns_rd_ds = reinterpret_cast<dns_rd_ds_t *>(dns);
-
-    data.append(bin_to_hexa(reinterpret_cast<u_char *>(&dns_rd_ds->key_tag), sizeof(dns_rd_ds->key_tag)).append(" "));
-    data.append(dnssec_algorithm_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_ds->algorithm)).append(" "));
-    data.append(dnssec_digest_type_to_str(static_cast<DnsSecDigestType>(dns_rd_ds->digest_type)).append(" "));
-
-    dns += sizeof(dns_rd_ds_t);
-
-    data.append(bin_to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
-
-    return data;
+    return "<Root>";
 }
 
-string DnsParser::read_dnskey(u_char *dns, u_int16_t data_len)
+string DnsParser::parse_record_ptr(u_char *dns_hdr, u_char *dns)
 {
-    string data;
-    auto *dns_rd_dnskey = reinterpret_cast<dns_rd_dnskey_t *>(dns);
-
-    data.append(bin_to_hexa(reinterpret_cast<u_char *>(&dns_rd_dnskey->flags), sizeof(dns_rd_dnskey->flags)).append(" "));
-    data.append(to_string(dns_rd_dnskey->protocol));
-    data.append(dnssec_algorithm_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_dnskey->algorithm)).append(" "));
-
-    dns += sizeof(dns_rd_dnskey_t);
-
-    data.append(bin_to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
-
-    return data;
+    u_int shift;
+    return read_domain_name(dns_hdr, dns, &shift);
 }
 
-void DnsParser::parse(u_int8_t *packet)
+string DnsParser::parse_record_rrsig(u_char *dns_hdr, u_char *dns, u_int data_len)
 {
-    dns_header_t *dns_hdr = nullptr;
-    dns_rr_t     *dns_ans = nullptr;
-    u_char       *dns     = nullptr;
-
-    string name, data, type, record;
-
+    string data;
     u_int shift;
 
-    dns_hdr = reinterpret_cast<dns_header_t *>(packet);
+    auto *dns_rd_rrsig = reinterpret_cast<dns_rd_rrsig_t *>(dns);
 
-    /* Filter just responses */
-    // ToDo: raise exception
-    if (!(ntohs(dns_hdr->flags) & 0b1000000000000000)) {
-        cerr << "Not a response" << endl;
-        return;
-    }
+    data.append(resource_type_to_str(static_cast<TypeDnsRecord>(ntohs(dns_rd_rrsig->type_covered))).append(" "));
+    data.append(algorithm_type_to_str((static_cast<DnsSecAlgorithmType>(dns_rd_rrsig->algorithm))).append(" "));
+    data.append(to_string(dns_rd_rrsig->labels).append(" "));
+    data.append(to_string(ntohl(dns_rd_rrsig->original_ttl)).append(" "));
+    data.append(bin_to_time(ntohl(dns_rd_rrsig->signature_expiration))).append(" ");
+    data.append(bin_to_time(ntohl(dns_rd_rrsig->signature_inception))).append(" ");
+    data.append(to_string(ntohs(dns_rd_rrsig->key_tag)).append(" "));
+    data.append(read_domain_name(dns_hdr, dns + sizeof(dns_rd_rrsig_t), &shift).append(" "));
 
-    /* Filter just no error responses */
-    // ToDo: raise exception
-    if (ntohs(dns_hdr->flags) & 0b0000000000001111) {
-        cerr << "There's an error in the response" << endl;
-        return;
-    }
+    dns += sizeof(dns_rd_rrsig_t) + shift;
 
-    /* Filter just responses with 1 question (other makes no sense)
-     * source: https://stackoverflow.com/questions/7565300/identifying-dns-packets */
-    // ToDo: raise exception
-    if (ntohs(dns_hdr->qd_count) != 1) {
-        cerr << "There's no 1 question" << endl;
-        return;
-    }
+    data.append(bin_to_hexa(dns, data_len - (shift + sizeof(dns_rd_rrsig_t))).substr(0, DIGEST_PRINT_LEN).append("..."));
 
-    // debug
-    fprintf(stderr, "DNS header\n");
-    fprintf(stderr, "    id = 0x%04x\n", ntohs(dns_hdr->id));
-    fprintf(stderr, "    flags = 0x%04x\n", ntohs(dns_hdr->flags));
-    fprintf(stderr, "    qd_count = %d\n", ntohs(dns_hdr->qd_count));
-    fprintf(stderr, "    an_count = %d\n", ntohs(dns_hdr->an_count));
-    fprintf(stderr, "    ns_count = %d\n", ntohs(dns_hdr->ns_count));
-    fprintf(stderr, "    ar_count = %d\n\n", ntohs(dns_hdr->ar_count));
+    return data;
+}
 
-    dns = reinterpret_cast<u_char *>(dns_hdr) + sizeof(dns_header_t);
+string DnsParser::parse_record_soa(u_char *dns_hdr, u_char *dns)
+{
+    string data;
+    u_int shift;
 
-    /* Skip query (name + 2 + 2) */
+    data = read_domain_name(dns_hdr, dns, &shift).append(" ");
+    dns += shift;
+
+    data.append(read_domain_name(dns_hdr, dns, &shift).append(" "));
+    dns += shift;
+
+    auto *dns_rd_soa = reinterpret_cast<dns_rd_soa_t *>(dns);
+
+    data.append(to_string(ntohl(dns_rd_soa->serial)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->refresh)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->retry)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->expire)).append(" "));
+    data.append(to_string(ntohl(dns_rd_soa->minimum)));
+
+    return data;
+}
+
+string DnsParser::parse_record_txt_spf(u_char *dns)
+{
+    string data;
     while (*dns != '\0') {
+        data += *dns;
         dns++;
     }
-    dns += (1 + sizeof(dns_query_t));
-
-    // Mozna prochazet i zbyle typy records (?)
-    int rr_count = ntohs(dns_hdr->an_count) + ntohs(dns_hdr->ns_count) + ntohs(dns_hdr->ar_count);
-    rr_count_total += rr_count;
-
-    /* For every answer */
-    for (int i = 0; i < rr_count; i++) {
-        dns_ans_cnt++;
-
-        fprintf(stderr, "DNS answer (%d)\n", i + 1);
-
-        name = read_domain_name((u_char *) dns_hdr, dns, &shift);
-
-        fprintf(stderr, "    domain_name = %s\n", name.c_str());
-
-        dns += shift;
-        dns_ans = reinterpret_cast<dns_rr_t *>(dns);
-
-        fprintf(stderr, "    type = %d\n", ntohs(dns_ans->type));
-        fprintf(stderr, "    class = %d\n", ntohs(dns_ans->class_));
-        fprintf(stderr, "    ttl = %d\n", ntohl(dns_ans->ttl));
-        fprintf(stderr, "    data_len = %d\n", ntohs(dns_ans->data_len));
-
-        dns += sizeof(dns_rr_t);
-
-        switch (ntohs(dns_ans->type)) {
-
-            case DNS_A:
-                data = read_ipv4(dns);
-                type = "A";
-                break;
-
-            case DNS_AAAA:
-                data = read_ipv6(dns);
-                type = "AAAA";
-                break;
-
-            case DNS_CNAME:
-                data = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-                type = "CNAME";
-                break;
-
-                // ToDo: test this case
-            case DNS_DNSKEY:
-                data = read_dnskey(dns, ntohs(dns_ans->data_len));
-                type = "DNSKEY";
-                break;
-
-            case DNS_DS:
-                data = read_ds(dns, ntohs(dns_ans->data_len));
-                type = "DS";
-                break;
-
-            case DNS_MX:
-                data = read_mx(reinterpret_cast<u_char *>(dns_hdr), dns);
-                type = "MX";
-                break;
-
-            case DNS_NS:
-                data = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-                type = "NS";
-                break;
-
-            case DNS_NSEC:
-                data = read_nsec(reinterpret_cast<u_char *>(dns_hdr), dns);
-                type = "NSEC";
-                break;
-
-            case DNS_OPT:
-                data = "<Root>";
-                type = "OPT";
-                return;
-
-            case DNS_PTR:
-                data = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-                type = "PTR";
-                break;
-
-            case DNS_RRSIG:
-                data = read_rrsig(reinterpret_cast<u_char *>(dns_hdr), dns, ntohs(dns_ans->data_len));
-                type = "RRSIG";
-                break;
-
-            case DNS_SOA:
-                data = read_soa(reinterpret_cast<u_char *>(dns_hdr), dns);
-                type = "SOA";
-                break;
-
-            // ToDo: test this case
-            case DNS_SPF:
-                data = read_txt(dns);
-                type = "SPF";
-                break;
-
-            // ToDo: test this case
-            case DNS_TXT:
-                data = read_txt(dns);
-                type = "TXT";
-                break;
-
-            // ToDo: neznami dns zaznam, mozna zahodit cely packet, hrozi problem
-            default:
-                data = "unknown_data";
-                type = "unknown_type";
-                break;
-        }
-        dns += ntohs(dns_ans->data_len);
-
-        fprintf(stderr, "    data = %s\n", data.c_str()); // debug
-        cerr << name << " " << type << " " << data << endl << endl; // debug
-
-        record = name.append(" ") + type.append(" ") + data.append(" ");
-
-        auto search = result_map.find(record);
-
-        if (search != result_map.end()) {
-            result_map[record]++;
-        }
-        else {
-            result_map[record] = 1;
-        }
-    }
+    return data;
 }

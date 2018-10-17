@@ -13,8 +13,12 @@
 #include <string>
 #include <unordered_map>
 
+// debug
 extern int dns_ans_cnt;
 
+/**
+ * Types of DNS records.
+ */
 enum TypeDnsRecord {
     DNS_A = 1,
     DNS_AAAA = 28,
@@ -30,9 +34,12 @@ enum TypeDnsRecord {
     DNS_SOA = 6,
     DNS_SPF = 99,
     DNS_TXT = 16
-    // ToDo: vice typu
+    // ToDo: add more types
 };
 
+/**
+ * Types of DNSSEC algorithms.
+ */
 enum DnsSecAlgorithmType {
     DNSSEC_DELETE = 0,
     DNSSEC_RSAMD5 = 1,
@@ -51,18 +58,24 @@ enum DnsSecAlgorithmType {
     DNSSEC_INDIRECT = 252,
     DNSSEC_PRIVATEDNS = 253,
     DNSSEC_PRIVATEOID = 254
-    // Other values are reserved or unassigned
+    // Other values (between 0-255) are reserved or unassigned
 };
 
+/**
+ * Types of DNSSEC digests.
+ */
 enum DnsSecDigestType {
     DNSSECDIGEST_RESERVED = 0,
     DNSSECDIGEST_SHA1 = 1,
     DNSSECDIGEST_SHA256 = 2,
     DNSSECDIGEST_GOSTR = 3,
     DNSSECDIGEST_SHA384 = 4,
-    // Other values are unassigned
+    // Other values (between 0-255) are unassigned
 };
 
+/**
+ * Structure of DNS header.
+ */
 struct __attribute__((packed)) dns_header_t {
     u_int16_t id;
     u_int16_t flags;
@@ -72,8 +85,11 @@ struct __attribute__((packed)) dns_header_t {
     u_int16_t ar_count;
 };
 
+/**
+ * Structure of DNS header flags.
+ */
 struct __attribute__((packed)) dns_header_flags_t {
-    // Bytes are already in network ordering, there's no need for ntohs()
+    // Bytes are already in network ordering, there's no need for their reverse.
     char rd :1;                // recursion desired
     char tc :1;                // truncated message
     char aa :1;                // authoritive answer
@@ -84,12 +100,18 @@ struct __attribute__((packed)) dns_header_flags_t {
     char ra :1;                // recursion available
 };
 
+/**
+ * Structure of DNS query.
+ */
 struct __attribute__((packed)) dns_query_t {
     // + name of the node whose resource records are being requested
     u_int16_t type;
     u_int16_t class_;
 };
 
+/**
+ * Structure of DNS resource record.
+ */
 struct __attribute__((packed)) dns_rr_t {
     // + encoded name of the node to which this resource record applies
     u_int16_t type;
@@ -99,21 +121,30 @@ struct __attribute__((packed)) dns_rr_t {
     // + specific record data
 };
 
+/**
+ * Structure of DNS resource data MX type.
+ */
 struct __attribute__((packed)) dns_rd_mx_t {
-    int16_t preference;
+    u_int16_t preference;
     // exchange
 };
 
+/**
+ * Structure of DNS resource data SOA type.
+ */
 struct __attribute__((packed)) dns_rd_soa_t {
     // + mname
     // + rname
     u_int32_t serial;
-    int32_t refresh;
-    int32_t retry;
-    int32_t expire;
+    u_int32_t refresh;
+    u_int32_t retry;
+    u_int32_t expire;
     u_int32_t minimum;
 };
 
+/**
+ * Structure of DNS resource data RRSIG type.
+ */
 struct __attribute__((packed)) dns_rd_rrsig_t {
     u_int16_t type_covered;
     u_char algorithm;
@@ -126,6 +157,9 @@ struct __attribute__((packed)) dns_rd_rrsig_t {
     // + Signature
 };
 
+/**
+ * Structure of DNS resource data DS type.
+ */
 struct __attribute__((packed)) dns_rd_ds_t {
     u_int16_t key_tag;
     u_char algorithm;
@@ -133,6 +167,9 @@ struct __attribute__((packed)) dns_rd_ds_t {
     // + Digest
 };
 
+/**
+ * Structure of DNS resource data DNSKEY type.
+ */
 struct __attribute__((packed)) dns_rd_dnskey_t {
     u_int16_t flags;
     u_char protocol;
@@ -140,36 +177,103 @@ struct __attribute__((packed)) dns_rd_dnskey_t {
     // + public key
 };
 
+/**
+ * Parser of DNS packets.
+ */
 class DnsParser {
 public:
+    /**
+     * Default constructor.
+     */
     DnsParser();
 
+    /**
+     * Default destructor.
+     */
     ~DnsParser();
 
-    void parse(u_int8_t *packet);
+    /**
+     * Parse DNS packets.
+     */
+    void parse(u_char *packet);
 
-    std::string dns_record_to_str(TypeDnsRecord type_dns_record);
+    /**
+     * Convert enum TypeDnsRecord to string.
+     */
+    std::string resource_type_to_str(TypeDnsRecord type_dns_record);
 
-    std::string dnssec_algorithm_to_str(DnsSecAlgorithmType dnssec_algorithm_type);
+    /**
+     * Convert enum DnsSecAlgorithmType to string.
+     */
+    std::string algorithm_type_to_str(DnsSecAlgorithmType dnssec_algorithm_type);
 
-    std::string dnssec_digest_type_to_str(DnsSecDigestType dnssec_digest_type);
+    /**
+     * Convert enum DnsSecDigestType to string.
+     */
+    std::string digest_type_to_str(DnsSecDigestType dnssec_digest_type);
 
-    std::string read_ipv4(u_char *dns_reader);
+    /**
+     * Parse record A (IPv4).
+     */
+    std::string parse_record_a(u_char *dns);
 
-    std::string read_ipv6(u_char *dns_reader);
+    /**
+     * Parse record AAAA (IPv6).
+     */
+    std::string parse_record_aaaa(u_char *dns);
 
-    std::string read_soa(u_char *dns_hdr, u_char *dns);
+    /**
+     * Parse record CNAME.
+     */
+    std::string parse_record_cname(u_char *dns_hdr, u_char *dns);
 
-    std::string read_mx(u_char *dns_hdr, u_char *dns);
+    /**
+     * Parse record DNSKEY.
+     */
+    std::string parse_record_dnskey(u_char *dns, u_int data_len);
 
-    std::string read_txt(u_char *dns);
+    /**
+     * Parse record DS.
+     */
+    std::string parse_record_ds(u_char *dns, u_int data_len);
 
-    std::string read_nsec(u_char *dns_hdr, u_char *dns);
+    /**
+     * Parse record MX.
+     */
+    std::string parse_record_mx(u_char *dns_hdr, u_char *dns);
 
-    std::string read_rrsig(u_char *dns_hdr, u_char *dns, u_int16_t data_len);
+    /**
+     * Parse record NS.
+     */
+    std::string parse_record_ns(u_char *dns_hdr, u_char *dns);
 
-    std::string read_ds(u_char *dns, u_int16_t data_len);
+    /**
+     * Parse record NSEC.
+     */
+    std::string parse_record_nsec(u_char *dns_hdr, u_char *dns);
 
-    std::string read_dnskey(u_char *dns, u_int16_t data_len);
+    /**
+     * Parse record OPT.
+     */
+    std::string parse_record_opt();
+
+    /**
+     * Parse record PTR.
+     */
+    std::string parse_record_ptr(u_char *dns_hdr, u_char *dns);
+
+    /**
+     * Parse record RRSIG.
+     */
+    std::string parse_record_rrsig(u_char *dns_hdr, u_char *dns, u_int data_len);
+
+    /**
+     * Parse record SOA.
+     */
+    std::string parse_record_soa(u_char *dns_hdr, u_char *dns);
+
+    /**
+     * Parse record TXT/SPF.
+     */
+    std::string parse_record_txt_spf(u_char *dns);
 };
-

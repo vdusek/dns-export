@@ -21,7 +21,7 @@ unordered_map<string, int> result_map;
 
 void print_help()
 {
-    cout << HELP_TEXT << endl;
+    cout << HELP_TEXT;
 }
 
 void error(RetCode ret_code, string message)
@@ -36,6 +36,7 @@ void signal_handler(int sig)
         pcap_breakloop(handle);
     }
     else if (sig == SIGUSR1) {
+        // ToDo: when pipe output, its binary data, it should be text!
         for (const auto &elem : result_map) {
             cout << elem.first << elem.second << endl;
         }
@@ -52,15 +53,18 @@ u_char reverse_bits(u_char byte) {
 string bin_to_time(u_int32_t time)
 {
     auto raw_time = static_cast<time_t>(time);
-    struct tm *timeinfo = localtime(&raw_time);
-    char *buffer = (char*) malloc(200);
-    const char *format = "%Y-%m-%d %H:%M:%S";
-    strftime(buffer, 200, format, timeinfo);
+    tm *timeinfo = localtime(&raw_time);
 
-//    if (strftime(buffer, 200, format, timeinfo) == 0) {
-//        fprintf(stderr, "strftime returned 0");
-//        exit(EXIT_FAILURE);
-//    }
+    auto buffer = static_cast<char *>(malloc(BUFFER_SIZE));
+    if (buffer == nullptr) {
+        throw SystemException("malloc failure");
+    }
+
+    const char *format = "%Y-%m-%d %H:%M:%S";
+
+    if (strftime(buffer, BUFFER_SIZE, format, timeinfo) == 0) {
+        throw SystemException("strftime failure");
+    }
 
     return string(buffer);
 }
@@ -92,7 +96,6 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
             dns = dns_hdr + offset;
             ptr = true;
         }
-
         for (int cnt = *dns; cnt > 0; cnt--) {
             dns++;
             name += *dns;
@@ -101,10 +104,8 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
                 (*shift)++;
             }
         }
-
         dns++;
         name += '.';
-
         if (!ptr) {
             (*shift)++;
         }
@@ -114,7 +115,6 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
         name.pop_back();
         name += '\0';
     }
-
     if (ptr) {
         (*shift) += 2;
     }
@@ -125,12 +125,10 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
     return name;
 }
 
-
-ArgumentException::ArgumentException(const std::string &message): std::invalid_argument(message) {}
+ArgumentException::ArgumentException(const string &message): invalid_argument(message) {}
 
 HelpException::HelpException() = default;
 
-PcapException::PcapException(const std::string &msg): m_msg(msg) {}
+PcapException::PcapException(const string &message): runtime_error(message) {}
 
-DnsException::DnsException(const std::string &msg): m_msg(msg) {}
-
+SystemException::SystemException(const string &message): runtime_error(message) {}

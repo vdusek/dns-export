@@ -91,7 +91,7 @@ void PcapParser::packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, con
     fprintf(stderr, ", protocol UDP (%d)\n\n", ip_->ip_p);
 
     dns_cnt++;
-    dns_parser.parse(reinterpret_cast<u_int8_t *>(udp) + UDP_HDR_LEN);
+    dns_parser.parse(reinterpret_cast<u_char *>(udp) + UDP_HDR_LEN);
 }
 
 void PcapParser::parse_file(std::string filename)

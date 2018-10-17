@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     catch (PcapException &exc) {
         error(RET_PCAP_ERR, "dns-export: " + string(exc.what()));
     }
-    catch (DnsException &exc) {
-        error(RET_DNS_ERR, "dns-export: " + string(exc.what()));
+    catch (SystemException &exc) {
+        error(RET_SYS_ERR, "dns-export: " + string(exc.what()));
     }
 
     // Send statistics to syslog

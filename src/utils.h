@@ -8,11 +8,12 @@
 
 #pragma once
 
-#include <stdexcept>
+#include <exception>
 #include <string>
 #include <unordered_map>
 
 const int DIGEST_PRINT_LEN = 20;
+const int BUFFER_SIZE = 512;
 const int SNAPLEN = 1;
 const int PROMISC = 1000;
 const u_int ETH_HDR_LEN = 14;
@@ -24,22 +25,21 @@ extern std::unordered_map<std::string, int> result_map;
  * All types of return codes.
  */
 enum RetCode {
-    RET_ARGS_ERR = 10,    // invalid command line options
-    RET_PCAP_ERR = 20,    // invalid pcap file
-    RET_DNS_ERR = 30,
-    RET_SYS = 99         // system error (malloc, socket, etc.)
+    RET_ARGS_ERR = 10,  // command line arguments failure
+    RET_PCAP_ERR = 20,  // pcap failure
+    RET_SYS_ERR  = 90   // system error (malloc, socket, etc.)
 };
 
 /**
- * Help text
+ * Help text.
  */
 const std::string HELP_TEXT = "Usage:\n"
     "$ ./dns-export [-r file.pcap] [-i interface] [-s syslog-server] [-t seconds] [-h]\n"
-    "    -r, --resource         description ToDo\n"
-    "    -i, --interface        description ToDO\n"
-    "    -s, --server           description ToDo\n"
-    "    -t, --timeout          value of timeout in seconds\n"
-    "    -h, --help             print this help";
+    "    -r, --resource         name of the resource .pcap file for sniffing\n"
+    "    -i, --interface        name of the network interface for sniffing\n"
+    "    -s, --server           address of the syslog server where statistics will be send\n"
+    "    -t, --timeout          value of timeout [s], specifies for how long it'll be sniffing\n"
+    "    -h, --help             print this help\n";
 
 /**
  * Print help on stdout.
@@ -96,25 +96,29 @@ public:
 /**
  * Exception for pcap failures.
  */
-class PcapException: public std::exception {
+class PcapException: public std::runtime_error {
 public:
-    const char *what() const noexcept override {
-        return m_msg.c_str();
-    }
-    explicit PcapException(const std::string &msg);
-private:
-    std::string m_msg;
+    explicit PcapException(const std::string &message);
 };
 
 /**
- * Exception for DNS failures.
+ * Exception for system failures (malloc, socket, etc.).
  */
-class DnsException: public std::exception {
+class SystemException: public std::runtime_error {
 public:
-    const char *what() const noexcept override {
-        return m_msg.c_str();
-    }
-    explicit DnsException(const std::string &msg);
-private:
-    std::string m_msg;
+    explicit SystemException(const std::string &message);
 };
+
+// // Example of own implementation of exception.
+///**
+// * Exception for DNS failures.
+// */
+//class DnsException: public std::exception {
+//public:
+//    const char *what() const noexcept override {
+//        return m_message.c_str();
+//    }
+//    explicit DnsException(const std::string &message);
+//private:
+//    std::string m_message;
+//};

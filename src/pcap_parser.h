@@ -17,6 +17,9 @@
 
 extern pcap_t *handle;
 
+/**
+ * Parser of network frames.
+ */
 class PcapParser {
 private:
     std::string m_filter_exp;
@@ -28,7 +31,7 @@ public:
     explicit PcapParser(std::string filter_exp);
 
     /**
-     * Empty destructor.
+     * Default destructor.
      */
     ~PcapParser();
 
