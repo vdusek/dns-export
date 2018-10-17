@@ -29,7 +29,7 @@ public:
     ArgParser(int argc, char **argv);
 
     /**
-     * Destructor, empty.
+     * Empty destructor.
      */
     ~ArgParser();
 

@@ -20,22 +20,22 @@ extern pcap_t *handle;
 class PcapParser {
 private:
     std::string m_filter_exp;
-    struct bpf_program m_compiled_filter;
+    bpf_program m_compiled_filter;
 public:
     /**
      * Constructor.
      */
-    PcapParser();
+    explicit PcapParser(std::string filter_exp);
 
     /**
-     * Destructor.
+     * Empty destructor.
      */
     ~PcapParser();
 
     /**
      * Packet handler.
      */
-    static void packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet);
+    static void packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
 
     /**
      * Parse pcap file.
@@ -43,7 +43,7 @@ public:
     void parse_file(std::string filename);
 
     /**
-     * Parse pcap file.
+     * Sniff on the interface till timeout.
      */
     void parse_interface(std::string interface, u_int timeout);
 };

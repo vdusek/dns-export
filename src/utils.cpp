@@ -26,7 +26,7 @@ void print_help()
 
 void error(RetCode ret_code, string message)
 {
-    cerr << message << endl;
+    cerr << message;
     exit(ret_code);
 }
 
@@ -42,11 +42,11 @@ void signal_handler(int sig)
     }
 }
 
-u_int8_t reverse_bits(u_int8_t b) {
-    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-    return b;
+u_char reverse_bits(u_char byte) {
+    byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
+    byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
+    byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
+    return byte;
 }
 
 string bin_to_time(u_int32_t time)
@@ -126,9 +126,11 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
 }
 
 
-ArgumentException::ArgumentException(const std::string &message) : std::invalid_argument(message) {}
+ArgumentException::ArgumentException(const std::string &message): std::invalid_argument(message) {}
 
 HelpException::HelpException() = default;
 
-//PcapException::PcapException(const std::string &msg) : m_msg(msg) {}
+PcapException::PcapException(const std::string &msg): m_msg(msg) {}
+
+DnsException::DnsException(const std::string &msg): m_msg(msg) {}
 

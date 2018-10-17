@@ -13,6 +13,10 @@
 #include <unordered_map>
 
 const int DIGEST_PRINT_LEN = 20;
+const int SNAPLEN = 1;
+const int PROMISC = 1000;
+const u_int ETH_HDR_LEN = 14;
+const u_int UDP_HDR_LEN = 8;
 
 extern std::unordered_map<std::string, int> result_map;
 
@@ -20,8 +24,9 @@ extern std::unordered_map<std::string, int> result_map;
  * All types of return codes.
  */
 enum RetCode {
-    RET_INV_ARGS = 1,    // invalid command line options
-    RET_INV_PCAP = 2,    // invalid pcap file
+    RET_ARGS_ERR = 10,    // invalid command line options
+    RET_PCAP_ERR = 20,    // invalid pcap file
+    RET_DNS_ERR = 30,
     RET_SYS = 99         // system error (malloc, socket, etc.)
 };
 
@@ -55,7 +60,7 @@ void signal_handler(int sig);
 /**
  * Reverse bits in a byte.
  */
-u_int8_t reverse_bits(u_int8_t b);
+u_char reverse_bits(u_char byte);
 
 /**
  * Convert binary data to '%Y-%m-%d %H:%M:%S' time format and return it as a string.
@@ -89,16 +94,27 @@ public:
 };
 
 /**
- * Exception for invalid pcap file.
+ * Exception for pcap failures.
  */
-//class PcapException: public std::exception {
-//public:
-//    const char *what() const noexcept override {
-//        return m_msg.c_str();
-//    }
-//    explicit PcapException(const std::string &msg);
-//private:
-//    std::string m_msg;
-//};
+class PcapException: public std::exception {
+public:
+    const char *what() const noexcept override {
+        return m_msg.c_str();
+    }
+    explicit PcapException(const std::string &msg);
+private:
+    std::string m_msg;
+};
 
-
+/**
+ * Exception for DNS failures.
+ */
+class DnsException: public std::exception {
+public:
+    const char *what() const noexcept override {
+        return m_msg.c_str();
+    }
+    explicit DnsException(const std::string &msg);
+private:
+    std::string m_msg;
+};

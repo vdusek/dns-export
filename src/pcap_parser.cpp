@@ -35,16 +35,15 @@ u_int pck_cnt = 0,
 pcap_t *handle = nullptr;
 DnsParser dns_parser;
 
-
-PcapParser::PcapParser():
-    m_filter_exp("port 53"),
+PcapParser::PcapParser(string filter_exp):
+    m_filter_exp(filter_exp),
     m_compiled_filter()
 {
 }
 
 PcapParser::~PcapParser() = default;
 
-void PcapParser::packet_handler(u_char *args, const struct pcap_pkthdr *packet_hdr, const u_char *packet)
+void PcapParser::packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet)
 {
     (void) args; (void) packet_hdr; // Stop yelling at me!
 
@@ -52,38 +51,32 @@ void PcapParser::packet_handler(u_char *args, const struct pcap_pkthdr *packet_h
     ip           *ip_ = nullptr;
     udphdr       *udp = nullptr;
 
-    const u_int eth_len     = 14,
-                udp_len     = 8;
+    u_int ip_hdr_len;
 
-    u_int ip_len;
-    string record;
-
-    pck_cnt++; // debug
+    pck_cnt++;
     eth = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
 
-    /* Filter just IPv4 frames */
+    // Filter just IPv4 frames
     if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
         not_ipv4_cnt++;
-        cerr << "Not an IP frame" << endl;
         return;
     }
     ipv4_cnt++;
 
-    ip_ = reinterpret_cast<ip *>(reinterpret_cast<char *>(eth) + eth_len);
-    ip_len = ip_->ip_hl * 4;
+    ip_ = reinterpret_cast<ip *>(reinterpret_cast<u_char *>(eth) + ETH_HDR_LEN);
+    ip_hdr_len = ip_->ip_hl * 4;
 
-    /* Filter just UDP communication */
-    // ToDo: parse TCP packets as well
+    // Filter just UDP communication
     if (ip_->ip_p == IPPROTO_UDP) {
         udp_cnt++;
     }
     else {
+        // ToDo: parse TCP packets as well!
         not_udp_cnt++;
-        cerr << "Not an UDP datagram" << endl;
         return;
     }
 
-    udp = reinterpret_cast<udphdr *>(reinterpret_cast<char *>(ip_) + ip_len);
+    udp = reinterpret_cast<udphdr *>(reinterpret_cast<u_char *>(ip_) + ip_hdr_len);
 
     fprintf(stderr, "------------------------------------------------------------------------------\n\n");
     fprintf(stderr, "Packet no. %d\n", pck_cnt);
@@ -91,14 +84,14 @@ void PcapParser::packet_handler(u_char *args, const struct pcap_pkthdr *packet_h
     fprintf(stderr, "    Source MAC: %s\n", ether_ntoa((const struct ether_addr *) & eth->ether_shost));
     fprintf(stderr, "    Destination MAC: %s\n", ether_ntoa((const struct ether_addr *) & eth->ether_dhost));
     fprintf(stderr, "    Ethernet type: 0x%x (IP packet)\n", ntohs(eth->ether_type));
-    fprintf(stderr, "    IP: hlen %d bytes, version %d, total length %d bytes, TTL %d\n", ip_len,
+    fprintf(stderr, "    IP: hlen %d bytes, version %d, total length %d bytes, TTL %d\n", ip_hdr_len,
             ip_->ip_v, ntohs(ip_->ip_len), ip_->ip_ttl);
     fprintf(stderr, "    IP src = %s, ", inet_ntoa(ip_->ip_src));
     fprintf(stderr, "IP dst = %s", inet_ntoa(ip_->ip_dst));
     fprintf(stderr, ", protocol UDP (%d)\n\n", ip_->ip_p);
 
     dns_cnt++;
-    dns_parser.parse(reinterpret_cast<u_int8_t *>(udp) + udp_len);
+    dns_parser.parse(reinterpret_cast<u_int8_t *>(udp) + UDP_HDR_LEN);
 }
 
 void PcapParser::parse_file(std::string filename)
@@ -109,25 +102,24 @@ void PcapParser::parse_file(std::string filename)
 
     // Open the file for sniffing
     if ((handle = pcap_open_offline(filename.c_str(), error_buffer)) == nullptr) {
-        fprintf(stderr, "Could not open file %s: %s\n", filename.c_str(), error_buffer);
-        return;
+        throw PcapException("Couldn't open file " + filename + "\n" + error_buffer + "\n");
     }
 
     // Compile the filter
-    if (pcap_compile(handle, &m_compiled_filter, m_filter_exp.c_str(), 0, 0) == EOF) {
-        fprintf(stderr, "Couldn't parse filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
-        return;
+    if (pcap_compile(handle, &m_compiled_filter, m_filter_exp.c_str(), 0, 0) == PCAP_ERROR) {
+        throw PcapException("Couldn't parse filter " + m_filter_exp + "\n" + pcap_geterr(handle) + "\n");
     }
 
     // Set the filter to the packet capture handle
-    if (pcap_setfilter(handle, &m_compiled_filter) == EOF) {
-        fprintf(stderr, "Couldn't install filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
-        return;
+    if (pcap_setfilter(handle, &m_compiled_filter) == PCAP_ERROR) {
+        throw PcapException("Couldn't install filter " + m_filter_exp + "\n" + pcap_geterr(handle) + "\n");
     }
 
     // Read packets from the file in the infinite loop (count == 0)
     // Incoming packets are processed by function packet_handler()
-    pcap_loop(handle, 0, packet_handler, nullptr);
+    if (pcap_loop(handle, 0, packet_handler, nullptr) == PCAP_ERROR) {
+        throw PcapException("Error occurs during pcap_loop\n" + string(pcap_geterr(handle)) + "\n");
+    }
 
     // Close the capture device and deallocate resources
     pcap_close(handle);
@@ -147,42 +139,38 @@ void PcapParser::parse_file(std::string filename)
 void PcapParser::parse_interface(std::string interface, u_int timeout)
 {
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
+    bpf_u_int32 mask;
+    bpf_u_int32 net;
+
     alarm(timeout);
     signal(SIGALRM, signal_handler);
     signal(SIGUSR1, signal_handler);
 
-    bpf_u_int32 mask;          /* The netmask of our sniffing device */
-    bpf_u_int32 net;           /* The IP of our sniffing device */
-
     // Get IP address and mask of the sniffing interface
-    if (pcap_lookupnet(interface.c_str(), &net, &mask, error_buffer) == -1) {
-        fprintf(stderr, "Can't get netmask for device %s\n", interface.c_str());
-        net = 0;
-        mask = 0;
-        return;
+    if (pcap_lookupnet(interface.c_str(), &net, &mask, error_buffer) == PCAP_ERROR) {
+        throw PcapException("Couldn't get netmask for device " + interface + "\n" + error_buffer + "\n");
     }
 
     // Open the interface for live sniffing
-    if ((handle = pcap_open_live(interface.c_str(), BUFSIZ, 1, 1000, error_buffer)) == nullptr) {
-        fprintf(stderr, "Could not open device %s: %s\n", interface.c_str(), error_buffer);
-        return;
+    if ((handle = pcap_open_live(interface.c_str(), BUFSIZ, SNAPLEN, PROMISC, error_buffer)) == nullptr) {
+        throw PcapException("Couldn't open device " + interface + "\n" + error_buffer + "\n");
     }
 
     // Compile the filter
-    if (pcap_compile(handle, &m_compiled_filter, m_filter_exp.c_str(), 0, net) == EOF) {
-        fprintf(stderr, "Couldn't parse filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
-        return;
+    if (pcap_compile(handle, &m_compiled_filter, m_filter_exp.c_str(), 0, net) == PCAP_ERROR) {
+        throw PcapException("Couldn't compile filter " + m_filter_exp + "\n" + pcap_geterr(handle) + "\n");
     }
 
     // Set the filter to the packet capture handle
-    if (pcap_setfilter(handle, &m_compiled_filter) == EOF) {
-        fprintf(stderr, "Couldn't install filter %s: %s\n", m_filter_exp.c_str(), pcap_geterr(handle));
-        return;
+    if (pcap_setfilter(handle, &m_compiled_filter) == PCAP_ERROR) {
+        throw PcapException("Couldn't install filter " + m_filter_exp + "\n" + pcap_geterr(handle) + "\n");
     }
 
     // Read packets from the interface in the infinite loop (count == 0)
     // Incoming packets are processed by function packet_handler()
-    pcap_loop(handle, 0, packet_handler, nullptr);
+    if (pcap_loop(handle, 0, packet_handler, nullptr) == PCAP_ERROR) {
+        throw PcapException("Error occurs during pcap_loop\n" + string(pcap_geterr(handle)) + "\n");
+    }
 
     // Close the capture device and deallocate resources
     pcap_close(handle);

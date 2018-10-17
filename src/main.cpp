@@ -23,7 +23,7 @@ int main(int argc, char **argv)
         arg_parser.parse();
     }
     catch (ArgumentException &exc) {
-        error(RET_INV_ARGS, "dns-export: " + string(exc.what()));
+        error(RET_ARGS_ERR, "dns-export: " + string(exc.what()));
     }
     catch (HelpException &exc) {
         print_help();
@@ -34,16 +34,26 @@ int main(int argc, char **argv)
     arg_parser.print();
 
     // Parse pcap file or sniff on network interface
-    PcapParser pcap_parser;
-    if (!arg_parser.resource().empty()) {
-        pcap_parser.parse_file(arg_parser.resource());
+    PcapParser pcap_parser("port 53");
+    try {
+        if (!arg_parser.resource().empty()) {
+            pcap_parser.parse_file(arg_parser.resource());
+        }
+        else if (!arg_parser.interface().empty()) {
+            pcap_parser.parse_interface(arg_parser.interface(), arg_parser.timeout());
+        }
     }
-    else if (!arg_parser.interface().empty()) {
-        pcap_parser.parse_interface(arg_parser.interface(), arg_parser.timeout());
+    catch (PcapException &exc) {
+        error(RET_PCAP_ERR, "dns-export: " + string(exc.what()));
+    }
+    catch (DnsException &exc) {
+        error(RET_DNS_ERR, "dns-export: " + string(exc.what()));
     }
 
     // Send statistics to syslog
     // ToDo: not print, but send to syslog
+    // ToDO: implement own exception for syslog
+
     for (const auto &elem : result_map) {
         cout << elem.first << elem.second << endl;
     }

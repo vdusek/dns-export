@@ -25,7 +25,7 @@ using namespace std;
 int rr_count_total = 0;
 int dns_ans_cnt = 0;
 
-DnsParser::DnsParser()= default;
+DnsParser::DnsParser() = default;
 
 DnsParser::~DnsParser() = default;
 

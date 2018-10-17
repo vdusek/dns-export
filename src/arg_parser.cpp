@@ -7,7 +7,9 @@
 // File: config.cpp
 
 #include <getopt.h>
+
 #include <iostream>
+
 #include "utils.h"
 #include "arg_parser.h"
 
@@ -59,7 +61,7 @@ void ArgParser::parse()
 {
     if (m_argc > 8) {
         throw ArgumentException("invalid combination of arguments\n"
-            "Try 'dns-export --help' for more information.");
+            "Try 'dns-export --help' for more information\n");
     }
 
     struct option long_options[] = {
@@ -84,7 +86,7 @@ void ArgParser::parse()
             case 'r':
                 if (r_set)
                     throw ArgumentException("multiple argument error\n"
-                        "Try 'dns-export --help' for more information.");
+                        "Try 'dns-export --help' for more information\n");
                 r_set = true;
                 m_resource = string(optarg);
                 break;
@@ -92,7 +94,7 @@ void ArgParser::parse()
             case 'i':
                 if (i_set)
                     throw ArgumentException("multiple argument error\n"
-                        "Try 'dns-export --help' for more information.");
+                        "Try 'dns-export --help' for more information\n");
                 i_set = true;
                 m_interface = string(optarg);
                 break;
@@ -100,7 +102,7 @@ void ArgParser::parse()
             case 's':
                 if (s_set)
                     throw ArgumentException("multiple argument error\n"
-                        "Try 'dns-export --help' for more information.");
+                        "Try 'dns-export --help' for more information\n");
                 s_set = true;
                 m_server = string(optarg);
                 break;
@@ -108,18 +110,18 @@ void ArgParser::parse()
             case 't':
                 if (t_set)
                     throw ArgumentException("multiple argument error\n"
-                        "Try 'dns-export --help' for more information.");
+                        "Try 'dns-export --help' for more information\n");
                 t_set = true;
                 try {
                     m_timeout = static_cast<u_int>(stoi(optarg, &idx, 10));
                 }
                 catch (exception &exc) {
                     throw ArgumentException("invalid timeout value\n"
-                        "Try 'dns-export --help' for more information.");
+                        "Try 'dns-export --help' for more information\n");
                 }
                 if (idx != string(optarg).length()) {
                     throw ArgumentException("invalid timeout value\n"
-                        "Try 'dns-export --help' for more information.");
+                        "Try 'dns-export --help' for more information\n");
                 }
                 break;
 
@@ -128,36 +130,36 @@ void ArgParser::parse()
 
             case '?':
                 throw ArgumentException("invalid argument\n"
-                    "Try 'dns-export --help' for more information.");
+                    "Try 'dns-export --help' for more information\n");
 
             default:
                 throw ArgumentException("unexpected error during parsing arguments\n"
-                    "Try 'dns-export --help' for more information.");
+                    "Try 'dns-export --help' for more information\n");
         }
     }
 
     if (m_argv[optind] != nullptr) {
         throw ArgumentException("invalid argument\n"
-            "Try 'dns-export --help' for more information.");
+            "Try 'dns-export --help' for more information\n");
     }
 
     if (r_set && i_set) {
         throw ArgumentException("invalid combination of arguments\n"
-            "Try 'dns-export --help' for more information.");
+            "Try 'dns-export --help' for more information\n");
     }
 
     if (r_set && t_set) {
         throw ArgumentException("invalid combination of arguments\n"
-            "Try 'dns-export --help' for more information.");
+            "Try 'dns-export --help' for more information\n");
     }
 
     if (!r_set && !i_set) {
         throw ArgumentException("interface or resource have to be set\n"
-            "Try 'dns-export --help' for more information.");
+            "Try 'dns-export --help' for more information\n");
     }
 
     if (!s_set) {
         throw ArgumentException("syslog server has to be set\n"
-            "Try 'dns-export --help' for more information.");
+            "Try 'dns-export --help' for more information\n");
     }
 }
