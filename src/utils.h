@@ -77,24 +77,28 @@ std::string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift);
  */
 class ArgumentException: public std::invalid_argument {
 public:
-    explicit ArgumentException(const std::string &message): std::invalid_argument(message) {}
+    explicit ArgumentException(const std::string &message);
 };
 
 /**
- * Exception for pcap_parser failures.
+ * Exception for help printing.
  */
-class PcapException: public std::exception {
-    const char *what() const noexcept override {
-        return m_msg.c_str();
-    }
-    PcapException(const std::string &msg): m_msg(msg) {};
-private:
-    std::string m_msg;
+class HelpException: public std::exception {
+public:
+    explicit HelpException();
 };
 
 /**
  * Exception for invalid pcap file.
  */
-//class PcapException
+//class PcapException: public std::exception {
+//public:
+//    const char *what() const noexcept override {
+//        return m_msg.c_str();
+//    }
+//    explicit PcapException(const std::string &msg);
+//private:
+//    std::string m_msg;
+//};
 
 

@@ -124,3 +124,11 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
 
     return name;
 }
+
+
+ArgumentException::ArgumentException(const std::string &message) : std::invalid_argument(message) {}
+
+HelpException::HelpException() = default;
+
+//PcapException::PcapException(const std::string &msg) : m_msg(msg) {}
+

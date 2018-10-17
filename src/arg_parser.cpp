@@ -7,10 +7,7 @@
 // File: config.cpp
 
 #include <getopt.h>
-
 #include <iostream>
-#include <stdexcept>
-
 #include "utils.h"
 #include "arg_parser.h"
 
@@ -22,8 +19,7 @@ ArgParser::ArgParser(int argc, char **argv):
     m_resource(""),
     m_interface(""),
     m_server(""),
-    m_timeout(60),
-    m_help(false)
+    m_timeout(60)
 {
 }
 
@@ -49,11 +45,6 @@ u_int ArgParser::timeout()
     return m_timeout;
 }
 
-bool ArgParser::help()
-{
-    return m_help;
-}
-
 void ArgParser::print()
 {
     cerr << "Configuration:" << endl;
@@ -61,14 +52,13 @@ void ArgParser::print()
     cerr << "    interface = " << m_interface << endl;
     cerr << "    server = " << m_server << endl;
     cerr << "    timeout = " << m_timeout << endl;
-    cerr << "    help = " << m_help << endl;
     cerr << endl;
 }
 
 void ArgParser::parse()
 {
-    if (m_argc > 9) {
-        throw ArgumentException("invalid argument\n"
+    if (m_argc > 8) {
+        throw ArgumentException("invalid combination of arguments\n"
             "Try 'dns-export --help' for more information.");
     }
 
@@ -86,8 +76,7 @@ void ArgParser::parse()
     bool r_set = false,
          i_set = false,
          s_set = false,
-         t_set = false,
-         h_set = false;
+         t_set = false;
     opterr = 0; // turn off getopt messages
 
     while ((opt = getopt_long(m_argc, m_argv, "r:i:s:t:h", long_options, nullptr)) != EOF) {
@@ -135,12 +124,7 @@ void ArgParser::parse()
                 break;
 
             case 'h':
-                if (h_set)
-                    throw ArgumentException("multiple argument error\n"
-                        "Try 'dns-export --help' for more information.");
-                h_set = true;
-                m_help = true;
-                break;
+                throw HelpException();
 
             case '?':
                 throw ArgumentException("invalid argument\n"
@@ -157,5 +141,23 @@ void ArgParser::parse()
             "Try 'dns-export --help' for more information.");
     }
 
-    // ToDo: ktere parametry je mozne kombinovat se kterymi? Co kdyz neni zadan server?
+    if (r_set && i_set) {
+        throw ArgumentException("invalid combination of arguments\n"
+            "Try 'dns-export --help' for more information.");
+    }
+
+    if (r_set && t_set) {
+        throw ArgumentException("invalid combination of arguments\n"
+            "Try 'dns-export --help' for more information.");
+    }
+
+    if (!r_set && !i_set) {
+        throw ArgumentException("interface or resource have to be set\n"
+            "Try 'dns-export --help' for more information.");
+    }
+
+    if (!s_set) {
+        throw ArgumentException("syslog server has to be set\n"
+            "Try 'dns-export --help' for more information.");
+    }
 }

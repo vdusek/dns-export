@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <iostream>
 #include <string>
 
 /**
@@ -22,7 +21,6 @@ private:
     std::string m_interface;
     std::string m_server;
     u_int m_timeout;
-    bool m_help;
 
 public:
     /**
@@ -31,34 +29,29 @@ public:
     ArgParser(int argc, char **argv);
 
     /**
-     * Destructor.
+     * Destructor, empty.
      */
     ~ArgParser();
 
     /**
-     * Get resource arg
+     * Get resource arg.
      */
     std::string resource();
 
     /**
-     * Get interface arg
+     * Get interface arg.
      */
     std::string interface();
 
     /**
-     * Get resource arg
+     * Get server arg.
      */
     std::string server();
 
     /**
-     * Get timeout arg
+     * Get timeout arg.
      */
     u_int timeout();
-
-    /**
-     * Get help arg
-     */
-    bool help();
 
     /**
      * Parse command line arguments.

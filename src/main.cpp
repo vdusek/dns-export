@@ -25,15 +25,13 @@ int main(int argc, char **argv)
     catch (ArgumentException &exc) {
         error(RET_INV_ARGS, "dns-export: " + string(exc.what()));
     }
-
-    // Debug print
-    arg_parser.print();
-
-    // Print help if needed
-    if (arg_parser.help()) {
+    catch (HelpException &exc) {
         print_help();
         return 0;
     }
+
+    // Debug print
+    arg_parser.print();
 
     // Parse pcap file or sniff on network interface
     PcapParser pcap_parser;

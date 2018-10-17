@@ -12,7 +12,6 @@
 #   $ make clean-all
 #   $ make pack
 
-# -g flag for purpose of debugging
 CPPC = g++
 CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap
 DEPS = dep.list
