@@ -26,7 +26,7 @@ void print_help()
 
 void error(RetCode ret_code, string message)
 {
-    cerr << message;
+    cerr << ERR_BEGIN << message;
     exit(ret_code);
 }
 
@@ -36,8 +36,7 @@ void signal_handler(int sig)
         pcap_breakloop(handle);
     }
     else if (sig == SIGUSR1) {
-        // ToDo: when pipe output, its binary data, it should be text!
-        for (const auto &elem : result_map) {
+        for (pair<string, int> elem: result_map) {
             cout << elem.first << elem.second << endl;
         }
     }
@@ -60,7 +59,7 @@ string bin_to_time(u_int32_t time)
         throw SystemException("malloc failure");
     }
 
-    const char *format = "%Y-%m-%d %H:%M:%S";
+    const char *format = "%Y-%m-%d_%H:%M:%S";
 
     if (strftime(buffer, BUFFER_SIZE, format, timeinfo) == 0) {
         throw SystemException("strftime failure");
@@ -105,7 +104,7 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
             }
         }
         dns++;
-        name += '.';
+        name.append(".");
         if (!ptr) {
             (*shift)++;
         }
@@ -113,7 +112,6 @@ string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)
 
     if (!name.empty()) {
         name.pop_back();
-        name += '\0';
     }
     if (ptr) {
         (*shift) += 2;
@@ -130,5 +128,7 @@ ArgumentException::ArgumentException(const string &message): invalid_argument(me
 HelpException::HelpException() = default;
 
 PcapException::PcapException(const string &message): runtime_error(message) {}
+
+SyslogException::SyslogException(const string &message): runtime_error(message) {}
 
 SystemException::SystemException(const string &message): runtime_error(message) {}

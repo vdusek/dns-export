@@ -4,7 +4,7 @@
 // Variant: 2 - Export DNS informaci pomoci protokolu Syslog
 // Author: Vladimir Dusek, xdusek27
 // Date: 30/9/2018
-// File: config.cpp
+// File: arg_parser.cpp
 
 #include <getopt.h>
 

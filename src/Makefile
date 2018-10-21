@@ -15,7 +15,7 @@
 CPPC = g++
 CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap
 DEPS = dep.list
-SRC = main.cpp arg_parser.cpp utils.cpp pcap_parser.cpp dns_parser.cpp
+SRC = main.cpp arg_parser.cpp utils.cpp pcap_parser.cpp dns_parser.cpp syslog.cpp
 OBJ = $(SRC:.cpp=.o)
 EXEC = dns-export
 ARCHIVE = xdusek27.tar

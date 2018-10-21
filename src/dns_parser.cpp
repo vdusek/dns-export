@@ -4,7 +4,7 @@
 // Variant: 2 - Export DNS informaci pomoci protokolu Syslog
 // Author: Vladimir Dusek, xdusek27
 // Date: 30/9/2018
-// File: dns_parser.h
+// File: dns_parser.cpp
 
 #include <string.h>
 #include <pcap/pcap.h>
@@ -265,9 +265,9 @@ string DnsParser::algorithm_type_to_str(DnsSecAlgorithmType dnssec_algorithm_typ
         case DNSSEC_INDIRECT:
             return "Reserved for Indirect Keys";
         case DNSSEC_PRIVATEDNS:
-            return "private s";
+            return "private algorithm";
         case DNSSEC_PRIVATEOID:
-            return "private s OID";
+            return "private algorithm OID";
         default:
             return "unassigned/reserved";
     }
@@ -478,12 +478,17 @@ string DnsParser::parse_record_opt()
     return "<Root>";
 }
 
+// ToDo:
+//   - it's IP address -> domain name
+//   - so the IP address is probably not read in the right way
 string DnsParser::parse_record_ptr(u_char *dns_hdr, u_char *dns)
 {
     u_int shift;
     return read_domain_name(dns_hdr, dns, &shift);
 }
 
+// ToDo:
+//   - RRSIG results are not 100% correct, filter and debug it
 string DnsParser::parse_record_rrsig(u_char *dns_hdr, u_char *dns, u_int data_len)
 {
     string data;

@@ -12,22 +12,22 @@
 #include <string>
 #include <unordered_map>
 
-const int DIGEST_PRINT_LEN = 20;
+// Global constants
 const int BUFFER_SIZE = 512;
-const int SNAPLEN = 1;
-const int PROMISC = 1000;
-const u_int ETH_HDR_LEN = 14;
-const u_int UDP_HDR_LEN = 8;
+const std::string FILTER = "port 53";
+const std::string ERR_BEGIN = "dns-export: ";
 
+// Unordered map for storing statistics
 extern std::unordered_map<std::string, int> result_map;
 
 /**
  * All types of return codes.
  */
 enum RetCode {
-    RET_ARGS_ERR = 10,  // command line arguments failure
-    RET_PCAP_ERR = 20,  // pcap failure
-    RET_SYS_ERR  = 90   // system error (malloc, socket, etc.)
+    RET_ARGS_ERR   = 10,  // command line arguments failure
+    RET_PCAP_ERR   = 20,  // pcap failure
+    RET_SYSLOG_ERR = 30,  // syslog failure
+    RET_SYS_ERR    = 90   // system error (malloc, socket, signal, etc.)
 };
 
 /**
@@ -35,11 +35,11 @@ enum RetCode {
  */
 const std::string HELP_TEXT = "Usage:\n"
     "$ ./dns-export [-r file.pcap] [-i interface] [-s syslog-server] [-t seconds] [-h]\n"
-    "    -r, --resource         name of the resource .pcap file for sniffing\n"
-    "    -i, --interface        name of the network interface for sniffing\n"
-    "    -s, --server           address of the syslog server where statistics will be send\n"
-    "    -t, --timeout          value of timeout [s], specifies for how long it'll be sniffing\n"
-    "    -h, --help             print this help\n";
+    "  -r, --resource     name of the resource .pcap file for sniffing\n"
+    "  -i, --interface    name of the network interface for sniffing\n"
+    "  -s, --server       address of the syslog server where statistics will be send\n"
+    "  -t, --timeout      value of timeout [s], specifies for how long it'll be sniffing\n"
+    "  -h, --help         print this help\n";
 
 /**
  * Print help on stdout.
@@ -102,12 +102,22 @@ public:
 };
 
 /**
- * Exception for system failures (malloc, socket, etc.).
+ * Exception for syslog failures.
+ */
+class SyslogException: public std::runtime_error {
+public:
+    explicit SyslogException(const std::string &message);
+};
+
+/**
+ * Exception for system failures (malloc, socket, signal, etc.).
  */
 class SystemException: public std::runtime_error {
 public:
     explicit SystemException(const std::string &message);
 };
+
+
 
 // // Example of own implementation of exception.
 ///**

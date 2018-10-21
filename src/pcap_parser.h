@@ -15,7 +15,15 @@
 
 #include "dns_parser.h"
 
+// Handle needs to be global because of signal handler
 extern pcap_t *handle;
+
+// Global constants
+const int DIGEST_PRINT_LEN = 20;
+const int SNAPLEN = 1;
+const int PROMISC = 1000;
+const u_int ETH_HDR_LEN = 14;
+const u_int UDP_HDR_LEN = 8;
 
 /**
  * Parser of network frames.
@@ -24,6 +32,12 @@ class PcapParser {
 private:
     std::string m_filter_exp;
     bpf_program m_compiled_filter;
+
+    /**
+     * Packet handler.
+     */
+    static void packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
+
 public:
     /**
      * Constructor.
@@ -34,11 +48,6 @@ public:
      * Default destructor.
      */
     ~PcapParser();
-
-    /**
-     * Packet handler.
-     */
-    static void packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
 
     /**
      * Parse pcap file.

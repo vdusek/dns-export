@@ -98,7 +98,9 @@ void PcapParser::parse_file(std::string filename)
 {
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
 
-    signal(SIGUSR1, signal_handler);
+    if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
+        throw SystemException("Unable to set signal handler");
+    }
 
     // Open the file for sniffing
     if ((handle = pcap_open_offline(filename.c_str(), error_buffer)) == nullptr) {
@@ -142,9 +144,16 @@ void PcapParser::parse_interface(std::string interface, u_int timeout)
     bpf_u_int32 mask;
     bpf_u_int32 net;
 
+    // Set alarm
     alarm(timeout);
-    signal(SIGALRM, signal_handler);
-    signal(SIGUSR1, signal_handler);
+
+    // Set signal handler
+    if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
+        throw SystemException("Unable to set signal handler");
+    }
+    if (signal(SIGALRM, signal_handler) == SIG_ERR) {
+        throw SystemException("Unable to set signal handler");
+    }
 
     // Get IP address and mask of the sniffing interface
     if (pcap_lookupnet(interface.c_str(), &net, &mask, error_buffer) == PCAP_ERROR) {

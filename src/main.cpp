@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "arg_parser.h"
 #include "pcap_parser.h"
+#include "syslog.h"
 
 using namespace std;
 
@@ -23,7 +24,7 @@ int main(int argc, char **argv)
         arg_parser.parse();
     }
     catch (ArgumentException &exc) {
-        error(RET_ARGS_ERR, "dns-export: " + string(exc.what()));
+        error(RET_ARGS_ERR, string(exc.what()));
     }
     catch (HelpException &exc) {
         print_help();
@@ -34,7 +35,7 @@ int main(int argc, char **argv)
     arg_parser.print();
 
     // Parse pcap file or sniff on network interface
-    PcapParser pcap_parser("port 53");
+    PcapParser pcap_parser(FILTER);
     try {
         if (!arg_parser.resource().empty()) {
             pcap_parser.parse_file(arg_parser.resource());
@@ -44,18 +45,30 @@ int main(int argc, char **argv)
         }
     }
     catch (PcapException &exc) {
-        error(RET_PCAP_ERR, "dns-export: " + string(exc.what()));
+        error(RET_PCAP_ERR, string(exc.what()));
     }
     catch (SystemException &exc) {
-        error(RET_SYS_ERR, "dns-export: " + string(exc.what()));
+        error(RET_SYS_ERR, string(exc.what()));
     }
 
-    // Send statistics to syslog
-    // ToDo: not print, but send to syslog
-    // ToDO: implement own exception for syslog
+    cout << endl;
 
-    for (const auto &elem : result_map) {
-        cout << elem.first << elem.second << endl;
+//    for (pair<string, int> elem: result_map) {
+//        cout << elem.first << elem.second << endl;
+//    }
+
+    // ToDo: destructor is not called after catched exception
+    Syslog syslog(arg_parser.server());
+    try {
+        syslog.connect();
+        for (pair<string, int> elem: result_map) {
+            syslog.send_log(elem.first + to_string(elem.second));
+        }
+        syslog.disconnect();
+    }
+    catch (SyslogException &exc) {
+        cout << "exc catched" << endl;
+        error(RET_SYSLOG_ERR, string(exc.what()));
     }
 
     return 0;

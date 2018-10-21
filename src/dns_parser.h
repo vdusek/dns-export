@@ -181,22 +181,7 @@ struct __attribute__((packed)) dns_rd_dnskey_t {
  * Parser of DNS packets.
  */
 class DnsParser {
-public:
-    /**
-     * Default constructor.
-     */
-    DnsParser();
-
-    /**
-     * Default destructor.
-     */
-    ~DnsParser();
-
-    /**
-     * Parse DNS packets.
-     */
-    void parse(u_char *packet);
-
+private:
     /**
      * Convert enum TypeDnsRecord to string.
      */
@@ -276,4 +261,19 @@ public:
      * Parse record TXT/SPF.
      */
     std::string parse_record_txt_spf(u_char *dns);
+public:
+    /**
+     * Default constructor.
+     */
+    DnsParser();
+
+    /**
+     * Default destructor.
+     */
+    ~DnsParser();
+
+    /**
+     * Parse DNS packets.
+     */
+    void parse(u_char *packet);
 };
