@@ -30,6 +30,7 @@ Syslog::Syslog(std::string address):
     m_socket_fd(0),
     m_connected(false)
 {
+    cerr << "constructor called" << endl;
 }
 
 Syslog::~Syslog()
@@ -40,6 +41,7 @@ Syslog::~Syslog()
     }
 }
 
+// ToDo: refactor this method
 string Syslog::get_timestamp()
 {
     char buffer[BUFFER_SIZE] = {0};
@@ -47,14 +49,17 @@ string Syslog::get_timestamp()
     tm *ts = gmtime(&time_now); // Current UTC time
 
     if (strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", ts) == 0) {
-        throw SystemException("strftime failure\n");
+        throw SystemException("strftime failed\n");
     }
 
     // Find out decimal part of seconds
     string time_stamp = string(buffer);
     timeval tval;
 
-    gettimeofday(&tval, nullptr);
+    if (gettimeofday(&tval, nullptr) == -1) {
+        throw SystemException("gettimeofday failed\ngettimeofday(): " +
+            string(strerror(errno)) + "\n");
+    }
 
     time_stamp.append(".");
     time_stamp.append(to_string(tval.tv_usec).substr(0, 3));
@@ -73,7 +78,7 @@ string Syslog::get_ip()
     ifaddrs *list_ifaddrs = nullptr;
 
     if (getifaddrs(&list_ifaddrs) == -1) {
-        throw SystemException("cannot get ip address of network interface\ngetifaddrs(): " +
+        throw SyslogException("cannot get ip address of network interface\ngetifaddrs(): " +
             string(strerror(errno)) + "\n");
     }
 

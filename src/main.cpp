@@ -24,11 +24,12 @@ int main(int argc, char **argv)
         arg_parser.parse();
     }
     catch (ArgumentException &exc) {
-        error(RET_ARGS_ERR, string(exc.what()));
+        cerr << NAME << ": " << string(exc.what()) << flush;
+        return RET_ARGS_ERR;
     }
     catch (HelpException &exc) {
-        print_help();
-        return 0;
+        cout << HELP_TEXT << flush;
+        return EXIT_SUCCESS;
     }
 
     // Debug print
@@ -45,19 +46,20 @@ int main(int argc, char **argv)
         }
     }
     catch (PcapException &exc) {
-        error(RET_PCAP_ERR, string(exc.what()));
+        cerr << NAME << ": " << string(exc.what()) << flush;
+        return RET_PCAP_ERR;
     }
     catch (SystemException &exc) {
-        error(RET_SYS_ERR, string(exc.what()));
+        cerr << NAME << ": " << string(exc.what()) << flush;
+        return RET_SYS_ERR;
     }
 
-    cout << endl;
+    cerr << endl; // debug
 
-    for (pair<string, int> elem: result_map) {
-        cout << elem.first << elem.second << endl;
-    }
+//    for (pair<string, int> elem: result_map) {
+//        cout << elem.first << elem.second << endl;
+//    }
 
-    // ToDo: destructor is not called after catched exception
     Syslog syslog(arg_parser.server());
     try {
         syslog.connect();
@@ -67,8 +69,14 @@ int main(int argc, char **argv)
         syslog.disconnect();
     }
     catch (SyslogException &exc) {
-        error(RET_SYSLOG_ERR, string(exc.what()));
+        cerr << NAME << ": " << string(exc.what()) << flush;
+        return RET_SYSLOG_ERR;
+    }
+    catch (SystemException &exc) {
+        cerr << NAME << ": " << string(exc.what()) << flush;
+        return RET_SYS_ERR;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
+

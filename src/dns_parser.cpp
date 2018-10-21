@@ -72,8 +72,8 @@ void DnsParser::parse(u_char *packet)
     while (*(++dns) != '\0');
     dns += (1 + sizeof(dns_query_t));
 
-    // ToDo: go through all type of resource records?
-    int rr_count = ntohs(dns_hdr->an_count) + ntohs(dns_hdr->ns_count) + ntohs(dns_hdr->ar_count);
+    // Go just through answers
+    int rr_count = ntohs(dns_hdr->an_count); // + ntohs(dns_hdr->ns_count) + ntohs(dns_hdr->ar_count);
     rr_count_total += rr_count;
 
     // For every resource record
@@ -175,7 +175,7 @@ void DnsParser::parse(u_char *packet)
             default:
                 data = "unknown_data";
                 type = "unknown_type";
-                break;
+                dns += ntohs(dns_rr->data_len);
         }
         dns += ntohs(dns_rr->data_len);
 

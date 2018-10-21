@@ -41,16 +41,6 @@ const std::string HELP_TEXT = "Usage:\n"
     "  -t, --timeout      value of timeout [s], specifies for how long it'll be sniffing\n"
     "  -h, --help         print this help\n";
 
-/**
- * Print help on stdout.
- */
-void print_help();
-
-/**
- * Print error message on stderr and exit the program according
- * to the ret_code parameter.
- */
-void error(RetCode ret_code, std::string message);
 
 /**
  * Handle signals.

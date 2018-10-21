@@ -19,17 +19,6 @@ using namespace std;
 
 unordered_map<string, int> result_map;
 
-void print_help()
-{
-    cout << HELP_TEXT;
-}
-
-void error(RetCode ret_code, string message)
-{
-    cerr << NAME << ": " << message;
-    exit(ret_code);
-}
-
 // ToDo:
 // - when timeout send statistics to syslog and continue sniffing
 // - when SIGINT just end the program (?)
@@ -61,13 +50,21 @@ u_char reverse_bits(u_char byte) {
     return byte;
 }
 
+//char buffer[BUFFER_SIZE] = {0};
+//time_t time_now = time(nullptr);
+//tm *ts = gmtime(&time_now); // Current UTC time
+//
+//if (strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", ts) == 0) {
+//throw SystemException("strftime failed\n");
+//}
+
 string bin_to_time(u_int32_t time)
 {
     char buffer[BUFFER_SIZE] = {0};
     auto raw_time = static_cast<time_t>(time);
-    tm *ts = localtime(&raw_time);
+    tm *ts = gmtime(&raw_time);
 
-    if (strftime(buffer, BUFFER_SIZE, "%Y-%m-%dT%H:%M:%S", ts) == 0) {
+    if (strftime(buffer, BUFFER_SIZE, "%Y-%m-%dT%H:%M:%SZ", ts) == 0) {
         throw SystemException("strftime failure\n");
     }
 
