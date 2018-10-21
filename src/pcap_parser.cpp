@@ -98,6 +98,9 @@ void PcapParser::parse_file(std::string filename)
 {
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
 
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+        throw SystemException("Unable to set signal handler");
+    }
     if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
         throw SystemException("Unable to set signal handler");
     }
@@ -148,6 +151,9 @@ void PcapParser::parse_interface(std::string interface, u_int timeout)
     alarm(timeout);
 
     // Set signal handler
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+        throw SystemException("Unable to set signal handler");
+    }
     if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
         throw SystemException("Unable to set signal handler");
     }

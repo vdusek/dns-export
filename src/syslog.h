@@ -9,19 +9,23 @@
 #pragma once
 
 #include <netinet/in.h>
+
 #include <string>
 
-// Default syslog port
+// Syslog port
 const int SYSLOG_PORT = 514;
 
-// Local0 Facility
-const int LOCAL0_FACILITY = 16;
+// Facility: local use 0
+const int FACILITY = 16;
 
-// Informational Severity
-const int INFORMATIONAL_SEVERITY = 6;
+// Severity: informational
+const int SEVERITY = 6;
 
 // Syslog message priority
-const std::string PRIORITY = std::to_string((LOCAL0_FACILITY * 8) + INFORMATIONAL_SEVERITY);
+const std::string PRIORITY = std::to_string((FACILITY * 8) + SEVERITY);
+
+// Syslog protocol version
+const int VERSION = 1;
 
 
 class Syslog {
@@ -67,4 +71,3 @@ public:
      */
     void disconnect();
 };
-

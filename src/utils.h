@@ -15,7 +15,7 @@
 // Global constants
 const int BUFFER_SIZE = 512;
 const std::string FILTER = "port 53";
-const std::string ERR_BEGIN = "dns-export: ";
+const std::string NAME = "dns-export";
 
 // Unordered map for storing statistics
 extern std::unordered_map<std::string, int> result_map;

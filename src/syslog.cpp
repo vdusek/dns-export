@@ -15,34 +15,15 @@
 #include <sys/socket.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include <iostream>
+#include <string>
 
 #include "syslog.h"
 #include "utils.h"
 
 using namespace std;
-
-/*
-
-struct sockaddr {
-    sa_family_t sa_family;
-    char        sa_data[14];
-};
-
-struct sockaddr_in {
-    short            sin_family;   // e.g. AF_INET
-    unsigned short   sin_port;     // e.g. htons(3490)
-    struct in_addr   sin_addr;     // see struct in_addr, below
-    char             sin_zero[8];  // zero this if you want to
-};
-
-struct in_addr {
-    unsigned long s_addr;  // load with inet_aton()
-};
-
- */
-
 
 Syslog::Syslog(std::string address):
     m_addr_server(address),
@@ -61,13 +42,25 @@ Syslog::~Syslog()
 
 string Syslog::get_timestamp()
 {
-    const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-    time_t t = time(nullptr);
-    tm *tm = localtime(&t);
-    char timestamp[20];
-    snprintf(timestamp, sizeof(timestamp), "%s %2d %.2d:%.2d:%.2d", months[tm->tm_mon],
-            tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
-    return timestamp;
+    char buffer[BUFFER_SIZE] = {0};
+    time_t time_now = time(nullptr);
+    tm *ts = gmtime(&time_now); // Current UTC time
+
+    if (strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", ts) == 0) {
+        throw SystemException("strftime failure\n");
+    }
+
+    // Find out decimal part of seconds
+    string time_stamp = string(buffer);
+    timeval tval;
+
+    gettimeofday(&tval, nullptr);
+
+    time_stamp.append(".");
+    time_stamp.append(to_string(tval.tv_usec).substr(0, 3));
+    time_stamp.append("Z");
+
+    return time_stamp;
 }
 
 string Syslog::get_ip()
@@ -76,24 +69,24 @@ string Syslog::get_ip()
         return m_my_ip;
     }
 
-    struct sockaddr_in *addr;
-    ifaddrs *addrs, *tmp = nullptr;
-    getifaddrs(&addrs);
-    tmp = addrs;
+    sockaddr_in *addr = nullptr;
+    ifaddrs *list_ifaddrs = nullptr;
 
-    while (tmp)  {
-        if ((tmp->ifa_flags & IFF_LOOPBACK) == 0 /* we dont want loopback address */
-            && tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
-        {
-            addr = (struct sockaddr_in *)tmp->ifa_addr;
-            // found IP address of sender
-            m_my_ip = inet_ntoa(addr->sin_addr);
-        }
-
-        tmp = tmp->ifa_next;
+    if (getifaddrs(&list_ifaddrs) == -1) {
+        throw SystemException("cannot get ip address of network interface\ngetifaddrs(): " +
+            string(strerror(errno)) + "\n");
     }
 
-    freeifaddrs(addrs);
+    for (ifaddrs *elem = list_ifaddrs; elem != nullptr; elem = elem->ifa_next) {
+        // Don't want loopback
+        if ((elem->ifa_flags & IFF_LOOPBACK) == 0 && elem->ifa_addr && elem->ifa_addr->sa_family == AF_INET) {
+            addr = reinterpret_cast<sockaddr_in *>(elem->ifa_addr);
+            m_my_ip = inet_ntoa(addr->sin_addr);
+        }
+    }
+
+    freeifaddrs(list_ifaddrs);
+
     return m_my_ip;
 }
 
@@ -128,7 +121,6 @@ void Syslog::connect()
             string(strerror(errno)) + "\n");
     }
 
-    // memory for res_s was dynamically allocated
     freeaddrinfo(res_s);
     m_connected = true;
 
@@ -141,13 +133,12 @@ void Syslog::send_log(std::string message)
         throw SyslogException("sending log to the syslog server failed\nnot connected");
     }
 
-    // ToDo: syntax of syslog msg (private methods)
+    string log = "<" + PRIORITY + ">" + to_string(VERSION) + " " + get_timestamp() + " " +
+        get_ip() + " " + NAME + " --- " + message;
 
-    string log = "<" + PRIORITY + ">" + get_timestamp() + " " + get_ip() + " dns-export --- " + message;
+    cerr << "sending:\n" << log << endl; // debug
 
-    cerr << "sending \"" << log << "\" to the syslog server" << endl; // debug
-
-    if (send(m_socket_fd, message.c_str(), message.size(), 0) == -1) {
+    if (send(m_socket_fd, log.c_str(), log.size(), 0) == -1) {
         throw SyslogException("sending log to the syslog server failed\nsend(): " + string(strerror(errno)) + "\n");
     }
 
@@ -156,12 +147,10 @@ void Syslog::send_log(std::string message)
 
 void Syslog::disconnect()
 {
+    cerr << "you're gonna be disconnected from the syslog server" << endl; // debug
+
     if (m_connected) {
         close(m_socket_fd);
         m_connected = false;
-        cerr << "disconnected from the syslog server" << endl; // debug
-    }
-    else {
-        cerr << "you're already disconnected from the syslog server" << endl; // debug
     }
 }

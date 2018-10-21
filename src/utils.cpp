@@ -26,19 +26,31 @@ void print_help()
 
 void error(RetCode ret_code, string message)
 {
-    cerr << ERR_BEGIN << message;
+    cerr << NAME << ": " << message;
     exit(ret_code);
 }
 
+// ToDo:
+// - when timeout send statistics to syslog and continue sniffing
+// - when SIGINT just end the program (?)
 void signal_handler(int sig)
 {
-    if (sig == SIGALRM) {
-        pcap_breakloop(handle);
-    }
-    else if (sig == SIGUSR1) {
-        for (pair<string, int> elem: result_map) {
-            cout << elem.first << elem.second << endl;
-        }
+    switch (sig) {
+        case SIGALRM:
+            pcap_breakloop(handle);
+            break;
+
+        case SIGUSR1:
+            for (pair<string, int> elem: result_map) {
+                cout << elem.first << elem.second << endl;
+            }
+            break;
+
+        case SIGINT:
+            exit(0);
+
+        default:
+            break;
     }
 }
 
@@ -51,18 +63,12 @@ u_char reverse_bits(u_char byte) {
 
 string bin_to_time(u_int32_t time)
 {
+    char buffer[BUFFER_SIZE] = {0};
     auto raw_time = static_cast<time_t>(time);
-    tm *timeinfo = localtime(&raw_time);
+    tm *ts = localtime(&raw_time);
 
-    auto buffer = static_cast<char *>(malloc(BUFFER_SIZE));
-    if (buffer == nullptr) {
-        throw SystemException("malloc failure");
-    }
-
-    const char *format = "%Y-%m-%d_%H:%M:%S";
-
-    if (strftime(buffer, BUFFER_SIZE, format, timeinfo) == 0) {
-        throw SystemException("strftime failure");
+    if (strftime(buffer, BUFFER_SIZE, "%Y-%m-%dT%H:%M:%S", ts) == 0) {
+        throw SystemException("strftime failure\n");
     }
 
     return string(buffer);

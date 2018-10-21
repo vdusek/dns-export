@@ -53,9 +53,9 @@ int main(int argc, char **argv)
 
     cout << endl;
 
-//    for (pair<string, int> elem: result_map) {
-//        cout << elem.first << elem.second << endl;
-//    }
+    for (pair<string, int> elem: result_map) {
+        cout << elem.first << elem.second << endl;
+    }
 
     // ToDo: destructor is not called after catched exception
     Syslog syslog(arg_parser.server());
@@ -67,7 +67,6 @@ int main(int argc, char **argv)
         syslog.disconnect();
     }
     catch (SyslogException &exc) {
-        cout << "exc catched" << endl;
         error(RET_SYSLOG_ERR, string(exc.what()));
     }
 
