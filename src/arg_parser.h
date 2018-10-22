@@ -66,5 +66,5 @@ public:
     /**
      * Print all attributes on stderr for purpose of debugging.
      */
-    void print();
+    void debug_print();
 };

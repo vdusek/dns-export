@@ -16,10 +16,7 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-
-#include <iostream>
 #include <string>
-
 #include "syslog.h"
 #include "utils.h"
 
@@ -30,12 +27,10 @@ Syslog::Syslog():
     m_socket_fd(0),
     m_connected(false)
 {
-    cerr << "constructor called" << endl;
 }
 
 Syslog::~Syslog()
 {
-    cerr << "destructor called" << endl;
     if (m_connected) {
         disconnect();
     }
@@ -134,7 +129,7 @@ void Syslog::connect()
     freeaddrinfo(res_s);
     m_connected = true;
 
-    cerr << "Successfully connected to the syslog server!" << endl << endl; // debug
+    DEBUG_PRINT("Connected to the syslog server!\n\n");
 }
 
 void Syslog::send_log(std::string message)
@@ -144,24 +139,24 @@ void Syslog::send_log(std::string message)
     }
 
     string log = "<" + PRIORITY + ">" + to_string(VERSION) + " " + get_timestamp() + " " +
-        get_ip() + " " + NAME + " --- " + message;
+        get_ip() + " " + PROJ_NAME + " --- " + message;
 
-//    cerr << "sending:\n" << log << endl; // debug
-    cerr << log << endl; // debug
+    DEBUG_PRINT("sending:\n");
+    DEBUG_PRINT(log + "\n");
 
     if (send(m_socket_fd, log.c_str(), log.size(), 0) == -1) {
         throw SyslogException("sending log to the syslog server failed\nsend(): " + string(strerror(errno)) + "\n");
     }
 
-//    cerr << "Log was sent successfully!" << endl << endl;
+    DEBUG_PRINT("Log was sent successfully!\n\n");
 }
 
 void Syslog::disconnect()
 {
-    cerr << "you're gonna be disconnected from the syslog server" << endl; // debug
-
     if (m_connected) {
         close(m_socket_fd);
         m_connected = false;
     }
+
+    DEBUG_PRINT("Disconnected to the syslog server.\n\n");
 }

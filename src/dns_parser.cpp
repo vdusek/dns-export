@@ -9,22 +9,19 @@
 #include <string.h>
 #include <pcap/pcap.h>
 #include <arpa/inet.h>
-
 #include <string>
-#include <iostream>
 #include <bitset>
-#include <unordered_map>
 #include <ctime>
-
 #include "utils.h"
 #include "dns_parser.h"
 #include "pcap_parser.h"
 
 using namespace std;
 
-// debug
+#ifdef DEBUG
 int rr_count_total = 0;
 int dns_ans_cnt = 0;
+#endif
 
 DnsParser::DnsParser() = default;
 
@@ -57,14 +54,13 @@ void DnsParser::parse(u_char *packet)
         return;
     }
 
-    // debug
-    fprintf(stderr, "DNS header\n");
-    fprintf(stderr, "    id = 0x%04x\n", ntohs(dns_hdr->id));
-    fprintf(stderr, "    flags = 0x%04x\n", ntohs(dns_hdr->flags));
-    fprintf(stderr, "    qd_count = %d\n", ntohs(dns_hdr->qd_count));
-    fprintf(stderr, "    an_count = %d\n", ntohs(dns_hdr->an_count));
-    fprintf(stderr, "    ns_count = %d\n", ntohs(dns_hdr->ns_count));
-    fprintf(stderr, "    ar_count = %d\n\n", ntohs(dns_hdr->ar_count));
+    DEBUG_PRINT("DNS header\n");
+    DEBUG_PRINT("    id = " + to_string(ntohs(dns_hdr->id)) + "\n");
+    DEBUG_PRINT("    flags = " + to_string(ntohs(dns_hdr->flags)) + "\n");
+    DEBUG_PRINT("    qd_count = " + to_string(ntohs(dns_hdr->qd_count)) + "\n");
+    DEBUG_PRINT("    an_count = " + to_string(ntohs(dns_hdr->an_count)) + "\n");
+    DEBUG_PRINT("    ns_count = " + to_string(ntohs(dns_hdr->ns_count)) + "\n");
+    DEBUG_PRINT("    ar_count = " + to_string(ntohs(dns_hdr->ar_count)) + "\n\n");
 
     dns = reinterpret_cast<u_char *>(dns_hdr) + sizeof(dns_header_t);
 
@@ -79,20 +75,16 @@ void DnsParser::parse(u_char *packet)
     // For every resource record
     for (int i = 0; i < rr_count; i++) {
         dns_ans_cnt++;
-
-        fprintf(stderr, "DNS answer (%d)\n", i + 1);
-
         name = read_domain_name(reinterpret_cast<u_char *>(dns_hdr), dns, &shift);
-
-        fprintf(stderr, "    domain_name = %s\n", name.c_str());
-
         dns += shift;
         dns_rr = reinterpret_cast<dns_rr_t *>(dns);
 
-        fprintf(stderr, "    type = %d\n", ntohs(dns_rr->type));
-        fprintf(stderr, "    class = %d\n", ntohs(dns_rr->class_));
-        fprintf(stderr, "    ttl = %d\n", ntohl(dns_rr->ttl));
-        fprintf(stderr, "    data_len = %d\n", ntohs(dns_rr->data_len));
+        DEBUG_PRINT("DNS RR no. " + to_string(i + 1) + "\n");
+        DEBUG_PRINT("    domain_name = " + name + "\n");
+        DEBUG_PRINT("    type = " + to_string(ntohs(dns_rr->type)) + "\n");
+        DEBUG_PRINT("    class = " + to_string(ntohs(dns_rr->class_)) + "\n");
+        DEBUG_PRINT("    ttl = " + to_string(ntohl(dns_rr->ttl)) + "\n");
+        DEBUG_PRINT("    data_len = " + to_string(ntohs(dns_rr->data_len)) + "\n");
 
         dns += sizeof(dns_rr_t);
 
@@ -113,7 +105,6 @@ void DnsParser::parse(u_char *packet)
                 type = "CNAME";
                 break;
 
-            // ToDo: test this case
             case DNS_DNSKEY:
                 data = parse_record_dnskey(dns, ntohs(dns_rr->data_len));
                 type = "DNSKEY";
@@ -179,13 +170,12 @@ void DnsParser::parse(u_char *packet)
         }
         dns += ntohs(dns_rr->data_len);
 
-        fprintf(stderr, "    data = %s\n", data.c_str()); // debug
-        cerr << "RESULT:\n" << name << " " << type << " " << data << endl << endl; // debug
-
         record = name.append(" ") + type.append(" ") + data.append(" ");
 
-        auto search = result_map.find(record);
+        DEBUG_PRINT("    data = " + data + "\n");
+        DEBUG_PRINT("    RECORD:\n        " + record + "\n\n");
 
+        auto search = result_map.find(record);
         if (search != result_map.end()) {
             result_map[record]++;
         }

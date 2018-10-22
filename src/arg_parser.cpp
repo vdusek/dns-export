@@ -9,6 +9,7 @@
 #include <getopt.h>
 
 #include <iostream>
+#include <string>
 
 #include "utils.h"
 #include "arg_parser.h"
@@ -53,14 +54,13 @@ u_int ArgParser::get_timeout()
     return m_timeout;
 }
 
-void ArgParser::print()
+void ArgParser::debug_print()
 {
-    cerr << "Configuration:" << endl;
-    cerr << "    resource = " << m_resource << endl;
-    cerr << "    interface = " << m_interface << endl;
-    cerr << "    server = " << m_server << endl;
-    cerr << "    timeout = " << m_timeout << endl;
-    cerr << endl;
+    DEBUG_PRINT("Configuration:\n");
+    DEBUG_PRINT("    resource = " + m_resource + "\n");
+    DEBUG_PRINT("    interface = " + m_interface + "\n");
+    DEBUG_PRINT("    server = " + m_server + "\n");
+    DEBUG_PRINT("    timeout = " + to_string(m_timeout) + "\n\n");
 }
 
 void ArgParser::parse()

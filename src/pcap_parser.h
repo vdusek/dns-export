@@ -9,10 +9,7 @@
 #pragma once
 
 #include <pcap/pcap.h>
-
 #include <string>
-#include <unordered_map>
-
 #include "dns_parser.h"
 
 // Handle needs to be global because of signal handler
@@ -32,6 +29,8 @@ class PcapParser {
 private:
     std::string m_filter_exp;
     bpf_program m_compiled_filter;
+    std::string m_resource;
+    std::string m_interface;
 
     /**
      * Packet handler.
@@ -40,7 +39,7 @@ private:
 
 public:
     /**
-     * Constructor.
+     * Constructor, set default members.
      */
     explicit PcapParser(std::string filter_exp);
 
@@ -50,12 +49,22 @@ public:
     ~PcapParser();
 
     /**
-     * Parse pcap file.
+     * Set resource name.
      */
-    void parse_file(std::string filename);
+    void set_resource(std::string resource);
+
+    /**
+     * Set interface name.
+     */
+    void set_interface(std::string interface);
+
+    /**
+     * Parse resource (.pcap file).
+     */
+    void parse_resource();
 
     /**
      * Sniff on the network interface.
      */
-    void sniff_interface(std::string interface);
+    void sniff_interface();
 };

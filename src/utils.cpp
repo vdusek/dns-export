@@ -6,13 +6,8 @@
 // Date: 30/9/2018
 // File: error.cpp
 
-#include <signal.h>
-
-#include <iostream>
 #include <string>
 #include <sstream>
-#include <syslog.h>
-
 #include "pcap_parser.h"
 #include "utils.h"
 

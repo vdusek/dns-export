@@ -11,11 +11,21 @@
 #include <exception>
 #include <string>
 #include <unordered_map>
+#include <iostream>
+
+/**
+ * Macro for debug purpose, print debug message on stderr only if constant DEBUG is defined.
+ */
+#ifdef DEBUG
+#define DEBUG_PRINT(x) do { std::cerr << x << std::flush; } while (0)
+#else
+#define DEBUG_PRINT(x) do { } while (0)
+#endif
 
 // Global constants
 const int BUFFER_SIZE = 512;
-const std::string FILTER = "port 53";
-const std::string NAME = "dns-export";
+const std::string FILTER_EXP = "port 53";
+const std::string PROJ_NAME = "dns-export";
 
 // Unordered map for storing statistics
 extern std::unordered_map<std::string, int> result_map;

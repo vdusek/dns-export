@@ -13,7 +13,7 @@
 #   $ make pack
 
 CPPC = g++
-CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap
+CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap -D DEBUG
 DEPS = dep.list
 SRC = main.cpp arg_parser.cpp utils.cpp pcap_parser.cpp dns_parser.cpp syslog.cpp
 OBJ = $(SRC:.cpp=.o)

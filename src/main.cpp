@@ -7,10 +7,6 @@
 // File: main.cpp
 
 #include <unistd.h>
-
-#include <iostream>
-#include <unordered_map>
-
 #include "utils.h"
 #include "arg_parser.h"
 #include "pcap_parser.h"
@@ -18,7 +14,10 @@
 
 using namespace std;
 
+// Global instance of Syslog because of signal_handler
 Syslog syslog;
+
+// Global instance of ArgParser because of signal_handler
 ArgParser arg_parser;
 
 void send_to_syslog()
@@ -31,11 +30,11 @@ void send_to_syslog()
         syslog.disconnect();
     }
     catch (SyslogException &exc) {
-        cerr << NAME << ": " << string(exc.what()) << flush;
+        cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
         exit(RET_SYSLOG_ERR);
     }
     catch (SystemException &exc) {
-        cerr << NAME << ": " << string(exc.what()) << flush;
+        cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
         exit(RET_SYS_ERR);
     }
 }
@@ -71,7 +70,7 @@ int main(int argc, char **argv)
         arg_parser.parse();
     }
     catch (ArgumentException &exc) {
-        cerr << NAME << ": " << string(exc.what()) << flush;
+        cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
         return RET_ARGS_ERR;
     }
     catch (HelpException &exc) {
@@ -80,38 +79,39 @@ int main(int argc, char **argv)
     }
     syslog.set_server_address(arg_parser.get_server());
 
-    arg_parser.print(); // debug
+    arg_parser.debug_print(); // debug
 
     // Set signals handler
     if ((signal(SIGINT,  signal_handler) == SIG_ERR) ||
         (signal(SIGUSR1, signal_handler) == SIG_ERR) ||
         (signal(SIGALRM, signal_handler) == SIG_ERR))
     {
-        throw SystemException("Unable to set signal handler");
+        cerr << PROJ_NAME << ": Unable to set signal handler\n" << flush;
+        return RET_SYS_ERR;
     }
 
     // Parse pcap file or sniff on network interface
-    PcapParser pcap_parser(FILTER);
+    PcapParser pcap_parser(FILTER_EXP);
     try {
         if (!arg_parser.get_resource().empty()) {
-            pcap_parser.parse_file(arg_parser.get_resource());
+            pcap_parser.set_resource(arg_parser.get_resource());
+            pcap_parser.parse_resource();
         }
         else if (!arg_parser.get_interface().empty()) {
             // Set alarm
             alarm(arg_parser.get_timeout());
-            pcap_parser.sniff_interface(arg_parser.get_interface());
+            pcap_parser.set_interface(arg_parser.get_interface());
+            pcap_parser.sniff_interface();
         }
     }
     catch (PcapException &exc) {
-        cerr << NAME << ": " << string(exc.what()) << flush;
+        cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
         return RET_PCAP_ERR;
     }
     catch (SystemException &exc) {
-        cerr << NAME << ": " << string(exc.what()) << flush;
+        cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
         return RET_SYS_ERR;
     }
-
-    cerr << endl; // debug
 
     if (!arg_parser.get_resource().empty()) {
         send_to_syslog();

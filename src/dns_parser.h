@@ -9,9 +9,7 @@
 #pragma once
 
 #include <sys/param.h>
-
 #include <string>
-#include <unordered_map>
 
 // debug
 extern int dns_ans_cnt;

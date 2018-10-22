@@ -12,31 +12,30 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <linux/udp.h>
-
 #include <string>
-#include <iostream>
-#include <unordered_map>
-
 #include "pcap_parser.h"
 #include "dns_parser.h"
 #include "utils.h"
 
 using namespace std;
 
-// debug
-u_int pck_cnt = 0,
-      dns_cnt = 0,
+#ifdef DEBUG
+u_int frame_cnt = 0,
       udp_cnt = 0,
-      not_udp_cnt = 0,
+      tcp_cnt = 0,
       ipv4_cnt = 0,
-      not_ipv4_cnt = 0;
+      not_ipv4_cnt = 0,
+      dns_cnt = 0;
+#endif
 
 pcap_t *handle = nullptr;
 DnsParser dns_parser;
 
 PcapParser::PcapParser(string filter_exp):
     m_filter_exp(filter_exp),
-    m_compiled_filter()
+    m_compiled_filter(),
+    m_resource(""),
+    m_interface("")
 {
 }
 
@@ -52,7 +51,7 @@ void PcapParser::packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, con
 
     u_int ip_hdr_len;
 
-    pck_cnt++;
+    frame_cnt++;
     eth = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
 
     // Filter just IPv4 frames
@@ -65,41 +64,55 @@ void PcapParser::packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, con
     ip_ = reinterpret_cast<ip *>(reinterpret_cast<u_char *>(eth) + ETH_HDR_LEN);
     ip_hdr_len = ip_->ip_hl * 4;
 
-    // Filter just UDP communication
+
+    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+    DEBUG_PRINT("Frame no. " + to_string(frame_cnt) + "\n");
+    DEBUG_PRINT("    Length: " + to_string(packet_hdr->len) + "\n");
+    DEBUG_PRINT("    Source MAC: " + string(ether_ntoa((const struct ether_addr *) & eth->ether_shost)) + "\n");
+    DEBUG_PRINT("    Destination MAC: " + string(ether_ntoa((const struct ether_addr *) & eth->ether_dhost)) + "\n");
+    DEBUG_PRINT("    IP hdr_len: " + to_string(ip_hdr_len) + ", version: " + to_string(ip_->ip_v) + ", total length: "
+                + to_string(ntohs(ip_->ip_len)) + ", TTL: " + to_string(ip_->ip_ttl) + "\n");
+    DEBUG_PRINT("    IPv4 src = " + string(inet_ntoa(ip_->ip_src)) + "\n");
+    DEBUG_PRINT("    IPv4 dst = " + string(inet_ntoa(ip_->ip_dst)) + "\n");
+    DEBUG_PRINT("    Transport protocol: " + to_string(ip_->ip_p) + "\n\n");
+
+
     if (ip_->ip_p == IPPROTO_UDP) {
         udp_cnt++;
     }
+    else if (ip_->ip_p == IPPROTO_TCP) {
+        tcp_cnt++;
+
+        // ToDo: implement TCP parsing
+        DEBUG_PRINT("\nTCP PARSING... (ToDo)\n\n");
+    }
     else {
-        // ToDo: parse TCP packets as well!
-        not_udp_cnt++;
         return;
     }
 
     udp = reinterpret_cast<udphdr *>(reinterpret_cast<u_char *>(ip_) + ip_hdr_len);
 
-    fprintf(stderr, "------------------------------------------------------------------------------\n\n");
-    fprintf(stderr, "Packet no. %d\n", pck_cnt);
-    fprintf(stderr, "    Length: %d\n", packet_hdr->len);
-    fprintf(stderr, "    Source MAC: %s\n", ether_ntoa((const struct ether_addr *) & eth->ether_shost));
-    fprintf(stderr, "    Destination MAC: %s\n", ether_ntoa((const struct ether_addr *) & eth->ether_dhost));
-    fprintf(stderr, "    Ethernet type: 0x%x (IP packet)\n", ntohs(eth->ether_type));
-    fprintf(stderr, "    IP: hlen %d bytes, version %d, total length %d bytes, TTL %d\n", ip_hdr_len,
-            ip_->ip_v, ntohs(ip_->ip_len), ip_->ip_ttl);
-    fprintf(stderr, "    IP src = %s, ", inet_ntoa(ip_->ip_src));
-    fprintf(stderr, "IP dst = %s", inet_ntoa(ip_->ip_dst));
-    fprintf(stderr, ", protocol UDP (%d)\n\n", ip_->ip_p);
-
     dns_cnt++;
     dns_parser.parse(reinterpret_cast<u_char *>(udp) + UDP_HDR_LEN);
 }
 
-void PcapParser::parse_file(std::string filename)
+void PcapParser::set_resource(std::string resource)
+{
+    m_resource = resource;
+}
+
+void PcapParser::set_interface(std::string interface)
+{
+    m_interface = interface;
+}
+
+void PcapParser::parse_resource()
 {
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
 
     // Open the file for sniffing
-    if ((handle = pcap_open_offline(filename.c_str(), error_buffer)) == nullptr) {
-        throw PcapException("Couldn't open file " + filename + "\n" + error_buffer + "\n");
+    if ((handle = pcap_open_offline(m_resource.c_str(), error_buffer)) == nullptr) {
+        throw PcapException("Couldn't open file " + m_resource + "\n" + error_buffer + "\n");
     }
 
     // Compile the filter
@@ -121,32 +134,32 @@ void PcapParser::parse_file(std::string filename)
     // Close the capture device and deallocate resources
     pcap_close(handle);
 
-    cerr << endl;
-    cerr << "Summary: " << endl;
-    cerr << "    Number of captured packets = " << pck_cnt << endl;
-    cerr << "    Number of IPv4 datagrams = " << ipv4_cnt << endl;
-    cerr << "    Number of other datagrams = " << not_ipv4_cnt << endl;
-    cerr << "    Number of UDP packets = " << udp_cnt<< endl;
-    cerr << "    Number of TCP (not UDP) packets = " << not_udp_cnt << endl;
-    cerr << "    Number of DNS packets = " << dns_cnt << endl;
-    cerr << "    Number of DNS answers = " << dns_ans_cnt << endl;
-    cerr << "=======================================================================" << endl;
+    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+    DEBUG_PRINT("Summary:\n");
+    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
+    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
+    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_cnt) + "\n");
+    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
+    DEBUG_PRINT("    Number of TCP (not UDP) packets = " + to_string(tcp_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS packets = " + to_string(dns_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
+    DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 }
 
-void PcapParser::sniff_interface(std::string interface)
+void PcapParser::sniff_interface()
 {
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
     bpf_u_int32 mask;
     bpf_u_int32 net;
 
     // Get IP address and mask of the sniffing interface
-    if (pcap_lookupnet(interface.c_str(), &net, &mask, error_buffer) == PCAP_ERROR) {
-        throw PcapException("Couldn't get netmask for device " + interface + "\n" + error_buffer + "\n");
+    if (pcap_lookupnet(m_interface.c_str(), &net, &mask, error_buffer) == PCAP_ERROR) {
+        throw PcapException("Couldn't get netmask for device " + m_interface + "\n" + error_buffer + "\n");
     }
 
     // Open the interface for live sniffing
-    if ((handle = pcap_open_live(interface.c_str(), BUFSIZ, SNAPLEN, PROMISC, error_buffer)) == nullptr) {
-        throw PcapException("Couldn't open device " + interface + "\n" + error_buffer + "\n");
+    if ((handle = pcap_open_live(m_interface.c_str(), BUFSIZ, SNAPLEN, PROMISC, error_buffer)) == nullptr) {
+        throw PcapException("Couldn't open device " + m_interface + "\n" + error_buffer + "\n");
     }
 
     // Compile the filter
@@ -168,14 +181,14 @@ void PcapParser::sniff_interface(std::string interface)
     // Close the capture device and deallocate resources
     pcap_close(handle);
 
-    cerr << endl;
-    cerr << "Summary: " << endl;
-    cerr << "    Number of captured packets = " << pck_cnt << endl;
-    cerr << "    Number of IPv4 datagrams = " << ipv4_cnt << endl;
-    cerr << "    Number of other datagrams = " << not_ipv4_cnt << endl;
-    cerr << "    Number of UDP packets = " << udp_cnt<< endl;
-    cerr << "    Number of TCP (not UDP) packets = " << not_udp_cnt << endl;
-    cerr << "    Number of DNS packets = " << dns_cnt << endl;
-    cerr << "    Number of DNS answers = " << dns_ans_cnt << endl;
-    cerr << "=======================================================================" << endl;
+    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+    DEBUG_PRINT("Summary:\n");
+    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
+    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
+    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_cnt) + "\n");
+    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
+    DEBUG_PRINT("    Number of TCP (not UDP) packets = " + to_string(tcp_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS packets = " + to_string(dns_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
+    DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 }
