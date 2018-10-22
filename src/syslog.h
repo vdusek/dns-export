@@ -30,8 +30,8 @@ const int VERSION = 1;
 
 class Syslog {
 private:
-    std::string m_addr_server;
-    std::string m_my_ip;
+    std::string m_server_address;
+    std::string m_client_ip;
     int m_socket_fd;
     bool m_connected;
 
@@ -49,12 +49,17 @@ public:
     /**
      * Constructor, set default members.
      */
-    explicit Syslog(std::string address);
+    explicit Syslog();
 
     /**
      * Destructor calls disconnect() if connected.
      */
     ~Syslog();
+
+    /**
+     * Set syslog server address.
+     */
+    void set_server_address(std::string address);
 
     /**
      * Connect to the syslog server.

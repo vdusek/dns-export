@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <syslog.h>
 
 #include "pcap_parser.h"
 #include "utils.h"
@@ -19,44 +20,12 @@ using namespace std;
 
 unordered_map<string, int> result_map;
 
-// ToDo:
-// - when timeout send statistics to syslog and continue sniffing
-// - when SIGINT just end the program (?)
-void signal_handler(int sig)
-{
-    switch (sig) {
-        case SIGALRM:
-            pcap_breakloop(handle);
-            break;
-
-        case SIGUSR1:
-            for (pair<string, int> elem: result_map) {
-                cout << elem.first << elem.second << endl;
-            }
-            break;
-
-        case SIGINT:
-            exit(0);
-
-        default:
-            break;
-    }
-}
-
 u_char reverse_bits(u_char byte) {
     byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
     byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
     byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
     return byte;
 }
-
-//char buffer[BUFFER_SIZE] = {0};
-//time_t time_now = time(nullptr);
-//tm *ts = gmtime(&time_now); // Current UTC time
-//
-//if (strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", ts) == 0) {
-//throw SystemException("strftime failed\n");
-//}
 
 string bin_to_time(u_int32_t time)
 {

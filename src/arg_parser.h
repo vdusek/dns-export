@@ -26,7 +26,7 @@ public:
     /**
      * Constructor, set all attributes to default values.
      */
-    ArgParser(int argc, char **argv);
+    ArgParser();
 
     /**
      * Default destructor.
@@ -34,24 +34,29 @@ public:
     ~ArgParser();
 
     /**
+     * Set argc and argv.
+     */
+    void set_args(int argc, char **argv);
+
+    /**
      * Get resource arg.
      */
-    std::string resource();
+    std::string get_resource();
 
     /**
      * Get interface arg.
      */
-    std::string interface();
+    std::string get_interface();
 
     /**
      * Get server arg.
      */
-    std::string server();
+    std::string get_server();
 
     /**
      * Get timeout arg.
      */
-    u_int timeout();
+    u_int get_timeout();
 
     /**
      * Parse command line arguments.

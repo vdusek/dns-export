@@ -15,9 +15,9 @@
 
 using namespace std;
 
-ArgParser::ArgParser(int argc, char **argv):
-    m_argc(argc),
-    m_argv(argv),
+ArgParser::ArgParser():
+    m_argc(0),
+    m_argv(nullptr),
     m_resource(""),
     m_interface(""),
     m_server(""),
@@ -27,22 +27,28 @@ ArgParser::ArgParser(int argc, char **argv):
 
 ArgParser::~ArgParser() = default;
 
-std::string ArgParser::resource()
+void ArgParser::set_args(int argc, char **argv)
+{
+    m_argc = argc;
+    m_argv = argv;
+}
+
+std::string ArgParser::get_resource()
 {
     return m_resource;
 }
 
-std::string ArgParser::interface()
+std::string ArgParser::get_interface()
 {
     return m_interface;
 }
 
-std::string ArgParser::server()
+std::string ArgParser::get_server()
 {
     return m_server;
 }
 
-u_int ArgParser::timeout()
+u_int ArgParser::get_timeout()
 {
     return m_timeout;
 }

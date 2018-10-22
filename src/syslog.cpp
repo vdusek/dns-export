@@ -25,8 +25,8 @@
 
 using namespace std;
 
-Syslog::Syslog(std::string address):
-    m_addr_server(address),
+Syslog::Syslog():
+    m_server_address(""),
     m_socket_fd(0),
     m_connected(false)
 {
@@ -39,6 +39,11 @@ Syslog::~Syslog()
     if (m_connected) {
         disconnect();
     }
+}
+
+void Syslog::set_server_address(std::string address)
+{
+    m_server_address = address;
 }
 
 // ToDo: refactor this method
@@ -70,15 +75,15 @@ string Syslog::get_timestamp()
 
 string Syslog::get_ip()
 {
-    if (!m_my_ip.empty()) {
-        return m_my_ip;
+    if (!m_client_ip.empty()) {
+        return m_client_ip;
     }
 
     sockaddr_in *addr = nullptr;
     ifaddrs *list_ifaddrs = nullptr;
 
     if (getifaddrs(&list_ifaddrs) == -1) {
-        throw SyslogException("cannot get ip address of network interface\ngetifaddrs(): " +
+        throw SystemException("cannot get ip address of network interface\ngetifaddrs(): " +
             string(strerror(errno)) + "\n");
     }
 
@@ -86,13 +91,13 @@ string Syslog::get_ip()
         // Don't want loopback
         if ((elem->ifa_flags & IFF_LOOPBACK) == 0 && elem->ifa_addr && elem->ifa_addr->sa_family == AF_INET) {
             addr = reinterpret_cast<sockaddr_in *>(elem->ifa_addr);
-            m_my_ip = inet_ntoa(addr->sin_addr);
+            m_client_ip = inet_ntoa(addr->sin_addr);
         }
     }
 
     freeifaddrs(list_ifaddrs);
 
-    return m_my_ip;
+    return m_client_ip;
 }
 
 void Syslog::connect()
@@ -104,7 +109,7 @@ void Syslog::connect()
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_protocol = IPPROTO_UDP;
 
-    if (getaddrinfo(m_addr_server.c_str(), to_string(SYSLOG_PORT).c_str(), &hints, &res_s) != 0) {
+    if (getaddrinfo(m_server_address.c_str(), to_string(SYSLOG_PORT).c_str(), &hints, &res_s) != 0) {
         throw SyslogException("connection to the syslog server failed\ngetaddrinfo(): " +
             string(strerror(errno)) + "\n");
     }
@@ -141,13 +146,14 @@ void Syslog::send_log(std::string message)
     string log = "<" + PRIORITY + ">" + to_string(VERSION) + " " + get_timestamp() + " " +
         get_ip() + " " + NAME + " --- " + message;
 
-    cerr << "sending:\n" << log << endl; // debug
+//    cerr << "sending:\n" << log << endl; // debug
+    cerr << log << endl; // debug
 
     if (send(m_socket_fd, log.c_str(), log.size(), 0) == -1) {
         throw SyslogException("sending log to the syslog server failed\nsend(): " + string(strerror(errno)) + "\n");
     }
 
-    cerr << "Log was sent successfully!" << endl << endl;
+//    cerr << "Log was sent successfully!" << endl << endl;
 }
 
 void Syslog::disconnect()

@@ -55,7 +55,7 @@ public:
     void parse_file(std::string filename);
 
     /**
-     * Sniff on the interface till timeout.
+     * Sniff on the network interface.
      */
-    void parse_interface(std::string interface, u_int timeout);
+    void sniff_interface(std::string interface);
 };
