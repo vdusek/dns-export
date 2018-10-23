@@ -40,16 +40,19 @@ void DnsParser::parse(u_char *packet)
 
     // Filter just responses
     if (!(ntohs(dns_hdr->flags) & 0b1000000000000000)) {
+        DEBUG_PRINT("Not a response\n\n");
         return;
     }
 
     // Filter just no error responses
     if (ntohs(dns_hdr->flags) & 0b0000000000001111) {
+        DEBUG_PRINT("Not without error\n\n");
         return;
     }
 
     // Filter just responses with 1 question, others make no sense
     if (ntohs(dns_hdr->qd_count) != 1) {
+        DEBUG_PRINT("More than 1 query\n\n");
         return;
     }
 
@@ -468,9 +471,6 @@ string DnsParser::parse_record_opt()
     return "<Root>";
 }
 
-// ToDo:
-//   - it's IP address -> domain name
-//   - so the IP address is probably not read in the right way
 string DnsParser::parse_record_ptr(u_char *dns_hdr, u_char *dns)
 {
     u_int shift;

@@ -20,6 +20,7 @@ const int DIGEST_PRINT_LEN = 20;
 const int SNAPLEN = 1;
 const int PROMISC = 1000;
 const u_int ETH_HDR_LEN = 14;
+const u_int IPV6_HDR_LEN = 40;
 const u_int UDP_HDR_LEN = 8;
 
 /**
@@ -33,9 +34,29 @@ private:
     std::string m_interface;
 
     /**
-     * Packet handler.
+     * Handle UDP packet.
      */
-    static void packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
+    static void udp_handle(u_char *ptr);
+
+    /**
+     * Handle TCP packet.
+     */
+    static void tcp_handle(u_char *ptr);
+
+    /**
+     * Handle IPv4 datagram.
+     */
+    static void ipv4_handle(u_char *ptr);
+
+    /**
+     * Handle IPv6 datagram.
+     */
+    static void ipv6_handle(u_char *ptr);
+
+    /**
+     * Handle whole packet.
+     */
+    static void packet_handle(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
 
 public:
     /**
