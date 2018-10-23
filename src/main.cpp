@@ -20,14 +20,16 @@ Syslog syslog;
 // Global instance of ArgParser because of signal_handler
 ArgParser arg_parser;
 
+// Connect to syslog if not connected and send data from result_map to syslog server.
 void send_to_syslog()
 {
     try {
-        syslog.connect();
+        if (!syslog.connected()) {
+            syslog.connect();
+        }
         for (pair<string, int> elem: result_map) {
             syslog.send_log(elem.first + to_string(elem.second));
         }
-        syslog.disconnect();
     }
     catch (SyslogException &exc) {
         cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
@@ -39,6 +41,7 @@ void send_to_syslog()
     }
 }
 
+// Signal handler
 void signal_handler(int signal)
 {
     switch (signal) {
@@ -55,6 +58,20 @@ void signal_handler(int signal)
 
         case SIGINT:
             pcap_breakloop(handle);
+            send_to_syslog();
+            syslog.disconnect();
+            DEBUG_PRINT("\n");
+            DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+            DEBUG_PRINT("Summary:\n");
+            DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
+            DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
+            DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
+            DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
+            DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
+            DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
+            DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
+            DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n\n");
+            DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
             exit(0);
 
         default:
@@ -62,6 +79,7 @@ void signal_handler(int signal)
     }
 }
 
+// Main
 int main(int argc, char **argv)
 {
     // Parse command line arguments
@@ -77,11 +95,13 @@ int main(int argc, char **argv)
         cout << HELP_TEXT << flush;
         return EXIT_SUCCESS;
     }
+
+    // Set address of syslog server
     syslog.set_server_address(arg_parser.get_server());
 
     arg_parser.debug_print(); // debug
 
-    // Set signals handler
+    // Set signal handler
     if ((signal(SIGINT,  signal_handler) == SIG_ERR) ||
         (signal(SIGUSR1, signal_handler) == SIG_ERR) ||
         (signal(SIGALRM, signal_handler) == SIG_ERR))
@@ -113,9 +133,23 @@ int main(int argc, char **argv)
         return RET_SYS_ERR;
     }
 
+    // In case of parsing file, send statistics to syslog
     if (!arg_parser.get_resource().empty()) {
         send_to_syslog();
+        syslog.disconnect();
     }
+
+    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+    DEBUG_PRINT("Summary:\n");
+    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
+    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
+    DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
+    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
+    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
+    DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
+    DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
+    DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 
     return EXIT_SUCCESS;
 }

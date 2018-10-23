@@ -12,19 +12,20 @@
 #include <string>
 #include "dns_parser.h"
 
-// Handle needs to be global because of signal handler
+// Extern debug counters
+extern u_int frame_cnt;
+extern u_int udp_cnt;
+extern u_int tcp_cnt;
+extern u_int not_udp_tcp_cnt;
+extern u_int ipv4_cnt;
+extern u_int ipv6_cnt;
+extern u_int not_ipv4_ipv6_cnt;
+
+// Handle of pcap resource is global because of signal handler
 extern pcap_t *handle;
 
-// Global constants
-const int DIGEST_PRINT_LEN = 20;
-const int SNAPLEN = 1;
-const int PROMISC = 1000;
-const u_int ETH_HDR_LEN = 14;
-const u_int IPV6_HDR_LEN = 40;
-const u_int UDP_HDR_LEN = 8;
-
 /**
- * Parser of network frames.
+ * Parser of network frames using pcap lib.
  */
 class PcapParser {
 private:
@@ -36,25 +37,25 @@ private:
     /**
      * Handle UDP packet.
      */
-    static void udp_handle(u_char *ptr);
+    static void udp_handle(u_char *packet);
 
     /**
      * Handle TCP packet.
      */
-    static void tcp_handle(u_char *ptr);
+    static void tcp_handle(u_char *packet);
 
     /**
      * Handle IPv4 datagram.
      */
-    static void ipv4_handle(u_char *ptr);
+    static void ipv4_handle(u_char *packet);
 
     /**
      * Handle IPv6 datagram.
      */
-    static void ipv6_handle(u_char *ptr);
+    static void ipv6_handle(u_char *packet);
 
     /**
-     * Handle whole packet.
+     * Handle ethernet frame.
      */
     static void packet_handle(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
 
@@ -65,7 +66,7 @@ public:
     explicit PcapParser(std::string filter_exp);
 
     /**
-     * Default destructor.
+     * Destructor, close the capture device and deallocate resources.
      */
     ~PcapParser();
 

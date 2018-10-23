@@ -7,16 +7,12 @@
 // File: pcap_parser.cpp
 
 #include <stdio.h>
-
 #include <pcap/pcap.h>
 #include <netinet/ether.h>
-
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
-
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
-
 #include <arpa/inet.h>
 #include <string>
 #include "pcap_parser.h"
@@ -25,16 +21,27 @@
 
 using namespace std;
 
-u_int frame_cnt = 0, // debug
-      udp_cnt = 0, // debug
-      tcp_cnt = 0, // debug
-      not_udp_tcp_cnt = 0, // debug
-      ipv4_cnt = 0, // debug
-      ipv6_cnt = 0, // debug
-      not_ipv4_ipv6_cnt = 0; // debug
+// Debug counters
+u_int frame_cnt = 0,
+      udp_cnt = 0,
+      tcp_cnt = 0,
+      not_udp_tcp_cnt = 0,
+      ipv4_cnt = 0,
+      ipv6_cnt = 0,
+      not_ipv4_ipv6_cnt = 0;
 
+// Handle of pcap resource is global because of signal handler
 pcap_t *handle = nullptr;
+
+// Global instance of DnsParser because of static methods
 DnsParser dns_parser;
+
+// Global constants just for this module
+const int SNAPLEN = 1;
+const int PROMISC = 1000;
+const u_int ETH_HDR_LEN = 14;
+const u_int IPV6_HDR_LEN = 40;
+const u_int UDP_HDR_LEN = 8;
 
 PcapParser::PcapParser(string filter_exp):
     m_filter_exp(filter_exp),
@@ -44,13 +51,16 @@ PcapParser::PcapParser(string filter_exp):
 {
 }
 
-PcapParser::~PcapParser() = default;
+PcapParser::~PcapParser()
+{
+    pcap_close(handle);
+}
 
-void PcapParser::udp_handle(u_char *ptr)
+void PcapParser::udp_handle(u_char *packet)
 {
     udp_cnt++; // debug
 
-    auto *udp = reinterpret_cast<udphdr *>(ptr);
+    auto *udp = reinterpret_cast<udphdr *>(packet);
 
     DEBUG_PRINT("UDP header\n");
     DEBUG_PRINT("    source port = " + to_string(ntohs(udp->source)) + "\n");
@@ -59,22 +69,25 @@ void PcapParser::udp_handle(u_char *ptr)
     dns_parser.parse(reinterpret_cast<u_char *>(udp) + UDP_HDR_LEN);
 }
 
-void PcapParser::tcp_handle(u_char *ptr)
+void PcapParser::tcp_handle(u_char *packet)
 {
     tcp_cnt++; // debug
 
-    auto *tcp = reinterpret_cast<tcphdr *>(ptr);
+    auto *tcp = reinterpret_cast<tcphdr *>(packet);
 
     // ToDo: implement tcp_handle
 
-    DEBUG_PRINT("TCP header\n\n");
+    DEBUG_PRINT("TCP header\n");
+    DEBUG_PRINT("    source port = " + to_string(ntohs(tcp->source)) + "\n");
+    DEBUG_PRINT("    destination port = " + to_string(ntohs(tcp->dest)) + "\n");
+    DEBUG_PRINT("    payload = " + to_string(tcp->doff * 4) + "\n\n");
 }
 
-void PcapParser::ipv4_handle(u_char *ptr)
+void PcapParser::ipv4_handle(u_char *packet)
 {
     ipv4_cnt++; // debug
 
-    auto ipv4 = reinterpret_cast<ip *>(ptr);
+    auto ipv4 = reinterpret_cast<ip *>(packet);
     u_int ipv4_hdr_len = ipv4->ip_hl * 4;
 
     DEBUG_PRINT("IPv4 header\n");
@@ -84,9 +97,11 @@ void PcapParser::ipv4_handle(u_char *ptr)
     DEBUG_PRINT("    IP dst = " + string(inet_ntoa(ipv4->ip_dst)) + "\n");
     DEBUG_PRINT("    Transport protocol: " + to_string(ipv4->ip_p) + "\n");
 
+    // UDP packets
     if (ipv4->ip_p == IPPROTO_UDP) {
         udp_handle(reinterpret_cast<u_char *>(ipv4) + ipv4_hdr_len);
     }
+    // TCP packets
     else if (ipv4->ip_p == IPPROTO_TCP) {
         tcp_handle(reinterpret_cast<u_char *>(ipv4) + ipv4_hdr_len);
     }
@@ -95,11 +110,11 @@ void PcapParser::ipv4_handle(u_char *ptr)
     }
 }
 
-void PcapParser::ipv6_handle(u_char *ptr)
+void PcapParser::ipv6_handle(u_char *packet)
 {
     ipv6_cnt++; // debug
 
-    auto *ipv6 = reinterpret_cast<ip6_hdr *>(ptr);
+    auto *ipv6 = reinterpret_cast<ip6_hdr *>(packet);
 
     char src_ipv6[INET6_ADDRSTRLEN]; // debug
     char dst_ipv6[INET6_ADDRSTRLEN]; // debug
@@ -111,9 +126,11 @@ void PcapParser::ipv6_handle(u_char *ptr)
     DEBUG_PRINT("    IP dst = " + string(dst_ipv6) + "\n");
     DEBUG_PRINT("    next header = " + to_string(ipv6->ip6_nxt) + "\n");
 
+    // UDP packets
     if (ipv6->ip6_nxt == IPPROTO_UDP) {
         udp_handle(reinterpret_cast<u_char *>(ipv6) + IPV6_HDR_LEN);
     }
+    // TCP packets
     else if (ipv6->ip6_nxt == IPPROTO_TCP) {
         tcp_handle(reinterpret_cast<u_char *>(ipv6) + IPV6_HDR_LEN);
     }
@@ -141,13 +158,10 @@ void PcapParser::packet_handle(u_char *args, const pcap_pkthdr *packet_hdr, cons
     if (ntohs(eth->ether_type) == ETHERTYPE_IP) {
         ipv4_handle(reinterpret_cast<u_char *>(eth) + ETH_HDR_LEN);
     }
-
     // IPv6 datagrams
     else if (ntohs(eth->ether_type) == ETHERTYPE_IPV6) {
         ipv6_handle(reinterpret_cast<u_char *>(eth) + ETH_HDR_LEN);
     }
-
-    // Other datagrams, don't care about them
     else {
         not_ipv4_ipv6_cnt++; // debug
     }
@@ -187,21 +201,6 @@ void PcapParser::parse_resource()
     if (pcap_loop(handle, 0, packet_handle, nullptr) == PCAP_ERROR) {
         throw PcapException("Error occurs during pcap_loop\n" + string(pcap_geterr(handle)) + "\n");
     }
-
-    // Close the capture device and deallocate resources
-    pcap_close(handle);
-
-    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
-    DEBUG_PRINT("Summary:\n");
-    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
-    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
-    DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
-    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
-    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
-    DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
-    DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
-    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
-    DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 }
 
 void PcapParser::sniff_interface()
@@ -235,19 +234,4 @@ void PcapParser::sniff_interface()
     if (pcap_loop(handle, 0, packet_handle, nullptr) == PCAP_ERROR) {
         throw PcapException("Error occurs during pcap_loop\n" + string(pcap_geterr(handle)) + "\n");
     }
-
-    // Close the capture device and deallocate resources
-    pcap_close(handle);
-
-    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
-    DEBUG_PRINT("Summary:\n");
-    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
-    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
-    DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
-    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
-    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
-    DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
-    DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
-    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
-    DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 }

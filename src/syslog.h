@@ -26,7 +26,9 @@ const std::string PRIORITY = std::to_string((FACILITY * 8) + SEVERITY);
 // Syslog protocol version
 const int VERSION = 1;
 
-
+/**
+ * Class for operations with syslog server.
+ */
 class Syslog {
 private:
     std::string m_server_address;
@@ -54,6 +56,11 @@ public:
      * Destructor calls disconnect() if connected.
      */
     ~Syslog();
+
+    /**
+     * Return true if connected, false otherwise.
+     */
+     bool connected();
 
     /**
      * Set syslog server address.

@@ -32,7 +32,6 @@ enum TypeDnsRecord {
     DNS_SOA = 6,
     DNS_SPF = 99,
     DNS_TXT = 16
-    // ToDo: add more types
 };
 
 /**

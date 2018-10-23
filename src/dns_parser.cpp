@@ -59,8 +59,6 @@ void DnsParser::parse(u_char *packet)
     dns_cnt++; // debug
 
     DEBUG_PRINT("DNS header\n");
-//    DEBUG_PRINT("    id = " + to_string(ntohs(dns_hdr->id)) + "\n");
-//    DEBUG_PRINT("    flags = " + to_string(ntohs(dns_hdr->flags)) + "\n");
     DEBUG_PRINT("    qd_count = " + to_string(ntohs(dns_hdr->qd_count)) + "\n");
     DEBUG_PRINT("    an_count = " + to_string(ntohs(dns_hdr->an_count)) + "\n");
     DEBUG_PRINT("    ns_count = " + to_string(ntohs(dns_hdr->ns_count)) + "\n");
@@ -155,7 +153,7 @@ void DnsParser::parse(u_char *packet)
                 type = "SOA";
                 break;
 
-            // ToDo: test this case
+            // ToDo: test this case, implement prase_spf
             case DNS_SPF:
                 data = parse_record_txt_spf(dns);
                 type = "SPF";

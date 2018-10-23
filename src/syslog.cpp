@@ -36,67 +36,22 @@ Syslog::~Syslog()
     }
 }
 
+bool Syslog::connected()
+{
+    return m_connected;
+}
+
 void Syslog::set_server_address(std::string address)
 {
     m_server_address = address;
 }
 
-// ToDo: refactor this method
-string Syslog::get_timestamp()
-{
-    char buffer[BUFFER_SIZE] = {0};
-    time_t time_now = time(nullptr);
-    tm *ts = gmtime(&time_now); // Current UTC time
-
-    if (strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", ts) == 0) {
-        throw SystemException("strftime failed\n");
-    }
-
-    // Find out decimal part of seconds
-    string time_stamp = string(buffer);
-    timeval tval;
-
-    if (gettimeofday(&tval, nullptr) == -1) {
-        throw SystemException("gettimeofday failed\ngettimeofday(): " +
-            string(strerror(errno)) + "\n");
-    }
-
-    time_stamp.append(".");
-    time_stamp.append(to_string(tval.tv_usec).substr(0, 3));
-    time_stamp.append("Z");
-
-    return time_stamp;
-}
-
-string Syslog::get_ip()
-{
-    if (!m_client_ip.empty()) {
-        return m_client_ip;
-    }
-
-    sockaddr_in *addr = nullptr;
-    ifaddrs *list_ifaddrs = nullptr;
-
-    if (getifaddrs(&list_ifaddrs) == -1) {
-        throw SystemException("cannot get ip address of network interface\ngetifaddrs(): " +
-            string(strerror(errno)) + "\n");
-    }
-
-    for (ifaddrs *elem = list_ifaddrs; elem != nullptr; elem = elem->ifa_next) {
-        // Don't want loopback
-        if ((elem->ifa_flags & IFF_LOOPBACK) == 0 && elem->ifa_addr && elem->ifa_addr->sa_family == AF_INET) {
-            addr = reinterpret_cast<sockaddr_in *>(elem->ifa_addr);
-            m_client_ip = inet_ntoa(addr->sin_addr);
-        }
-    }
-
-    freeifaddrs(list_ifaddrs);
-
-    return m_client_ip;
-}
-
 void Syslog::connect()
 {
+    if (m_connected) {
+        return;
+    }
+
     addrinfo hints, *res, *res_s;
 
     memset(&hints, 0, sizeof(addrinfo));
@@ -158,5 +113,59 @@ void Syslog::disconnect()
         m_connected = false;
     }
 
-    DEBUG_PRINT("Disconnected to the syslog server.\n\n");
+    DEBUG_PRINT("Disconnected from the syslog server.\n\n");
+}
+
+// ToDo: refactor this method
+string Syslog::get_timestamp()
+{
+    char buffer[BUFFER_SIZE] = {0};
+    time_t time_now = time(nullptr);
+    tm *ts = gmtime(&time_now); // Current UTC time
+
+    if (strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", ts) == 0) {
+        throw SystemException("strftime failed\n");
+    }
+
+    // Find out decimal part of seconds
+    string time_stamp = string(buffer);
+    timeval tval;
+
+    if (gettimeofday(&tval, nullptr) == -1) {
+        throw SystemException("gettimeofday failed\ngettimeofday(): " +
+                              string(strerror(errno)) + "\n");
+    }
+
+    time_stamp.append(".");
+    time_stamp.append(to_string(tval.tv_usec).substr(0, 3));
+    time_stamp.append("Z");
+
+    return time_stamp;
+}
+
+string Syslog::get_ip()
+{
+    if (!m_client_ip.empty()) {
+        return m_client_ip;
+    }
+
+    sockaddr_in *addr = nullptr;
+    ifaddrs *list_ifaddrs = nullptr;
+
+    if (getifaddrs(&list_ifaddrs) == -1) {
+        throw SystemException("cannot get ip address of network interface\ngetifaddrs(): " +
+                              string(strerror(errno)) + "\n");
+    }
+
+    for (ifaddrs *elem = list_ifaddrs; elem != nullptr; elem = elem->ifa_next) {
+        // Don't want loopback
+        if ((elem->ifa_flags & IFF_LOOPBACK) == 0 && elem->ifa_addr && elem->ifa_addr->sa_family == AF_INET) {
+            addr = reinterpret_cast<sockaddr_in *>(elem->ifa_addr);
+            m_client_ip = inet_ntoa(addr->sin_addr);
+        }
+    }
+
+    freeifaddrs(list_ifaddrs);
+
+    return m_client_ip;
 }
