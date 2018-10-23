@@ -18,10 +18,9 @@
 
 using namespace std;
 
-#ifdef DEBUG
-int rr_count_total = 0;
-int dns_ans_cnt = 0;
-#endif
+int rr_count_total = 0; // debug
+int dns_ans_cnt = 0; // debug
+int dns_cnt = 0; // debug
 
 DnsParser::DnsParser() = default;
 
@@ -54,9 +53,11 @@ void DnsParser::parse(u_char *packet)
         return;
     }
 
+    dns_cnt++; // debug
+
     DEBUG_PRINT("DNS header\n");
-    DEBUG_PRINT("    id = " + to_string(ntohs(dns_hdr->id)) + "\n");
-    DEBUG_PRINT("    flags = " + to_string(ntohs(dns_hdr->flags)) + "\n");
+//    DEBUG_PRINT("    id = " + to_string(ntohs(dns_hdr->id)) + "\n");
+//    DEBUG_PRINT("    flags = " + to_string(ntohs(dns_hdr->flags)) + "\n");
     DEBUG_PRINT("    qd_count = " + to_string(ntohs(dns_hdr->qd_count)) + "\n");
     DEBUG_PRINT("    an_count = " + to_string(ntohs(dns_hdr->an_count)) + "\n");
     DEBUG_PRINT("    ns_count = " + to_string(ntohs(dns_hdr->ns_count)) + "\n");
@@ -65,7 +66,8 @@ void DnsParser::parse(u_char *packet)
     dns = reinterpret_cast<u_char *>(dns_hdr) + sizeof(dns_header_t);
 
     // Skip query (name + sizeof(query)
-    while (*(++dns) != '\0');
+    while (*(++dns) != '\0')
+        ;
     dns += (1 + sizeof(dns_query_t));
 
     // Go just through answers
@@ -156,13 +158,11 @@ void DnsParser::parse(u_char *packet)
                 type = "SPF";
                 break;
 
-            // ToDo: test this case
             case DNS_TXT:
                 data = parse_record_txt_spf(dns);
                 type = "TXT";
                 break;
 
-            // ToDo: when unknown DNS record, maybe throw away whole packet, it could cause a problem
             default:
                 data = "unknown_data";
                 type = "unknown_type";
@@ -310,13 +310,13 @@ string DnsParser::parse_record_dnskey(u_char *dns, u_int data_len)
     string data;
     auto *dns_rd_dnskey = reinterpret_cast<dns_rd_dnskey_t *>(dns);
 
-    data.append(bin_to_hexa(reinterpret_cast<u_char *>(&dns_rd_dnskey->flags), sizeof(dns_rd_dnskey->flags)).append(" "));
-    data.append(to_string(dns_rd_dnskey->protocol));
+    data.append("0x" + bin_to_hex(reinterpret_cast<u_char *>(&dns_rd_dnskey->flags), sizeof(dns_rd_dnskey->flags)).append(" "));
+    data.append(to_string(dns_rd_dnskey->protocol).append(" "));
     data.append(algorithm_type_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_dnskey->algorithm)).append(" "));
 
     dns += sizeof(dns_rd_dnskey_t);
 
-    data.append(bin_to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
+    data.append(bin_to_hex(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
 
     return data;
 }
@@ -326,13 +326,13 @@ string DnsParser::parse_record_ds(u_char *dns, u_int data_len)
     string data;
     auto *dns_rd_ds = reinterpret_cast<dns_rd_ds_t *>(dns);
 
-    data.append(bin_to_hexa(reinterpret_cast<u_char *>(&dns_rd_ds->key_tag), sizeof(dns_rd_ds->key_tag)).append(" "));
+    data.append(bin_to_hex(reinterpret_cast<u_char *>(&dns_rd_ds->key_tag), sizeof(dns_rd_ds->key_tag)).append(" "));
     data.append(algorithm_type_to_str(static_cast<DnsSecAlgorithmType>(dns_rd_ds->algorithm)).append(" "));
     data.append(digest_type_to_str(static_cast<DnsSecDigestType>(dns_rd_ds->digest_type)).append(" "));
 
     dns += sizeof(dns_rd_ds_t);
 
-    data.append(bin_to_hexa(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
+    data.append(bin_to_hex(dns, data_len - sizeof(dns_rd_ds_t)).substr(0, DIGEST_PRINT_LEN).append("..."));
 
     return data;
 }
@@ -497,7 +497,7 @@ string DnsParser::parse_record_rrsig(u_char *dns_hdr, u_char *dns, u_int data_le
 
     dns += sizeof(dns_rd_rrsig_t) + shift;
 
-    data.append(bin_to_hexa(dns, data_len - (shift + sizeof(dns_rd_rrsig_t))).substr(0, DIGEST_PRINT_LEN).append("..."));
+    data.append(bin_to_hex(dns, data_len - (shift + sizeof(dns_rd_rrsig_t))).substr(0, DIGEST_PRINT_LEN).append("..."));
 
     return data;
 }
@@ -527,9 +527,16 @@ string DnsParser::parse_record_soa(u_char *dns_hdr, u_char *dns)
 string DnsParser::parse_record_txt_spf(u_char *dns)
 {
     string data;
-    while (*dns != '\0') {
-        data += *dns;
-        dns++;
+    u_int i = 0;
+
+    for (i = 0; dns[i] != '\0'; i++)
+        ;
+
+    data = to_string(i - 1).append(" \"");
+
+    for (i = 0; dns[i] != '\0'; i++) {
+        data += dns[i];
     }
-    return data;
+
+    return data.append("\"");
 }

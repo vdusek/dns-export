@@ -19,14 +19,11 @@
 
 using namespace std;
 
-#ifdef DEBUG
-u_int frame_cnt = 0,
-      udp_cnt = 0,
-      tcp_cnt = 0,
-      ipv4_cnt = 0,
-      not_ipv4_cnt = 0,
-      dns_cnt = 0;
-#endif
+u_int frame_cnt = 0, // debug
+      udp_cnt = 0, // debug
+      tcp_cnt = 0, // debug
+      ipv4_cnt = 0, // debug
+      not_ipv4_cnt = 0; // debug
 
 pcap_t *handle = nullptr;
 DnsParser dns_parser;
@@ -92,7 +89,6 @@ void PcapParser::packet_handler(u_char *args, const pcap_pkthdr *packet_hdr, con
 
     udp = reinterpret_cast<udphdr *>(reinterpret_cast<u_char *>(ip_) + ip_hdr_len);
 
-    dns_cnt++;
     dns_parser.parse(reinterpret_cast<u_char *>(udp) + UDP_HDR_LEN);
 }
 
@@ -141,7 +137,7 @@ void PcapParser::parse_resource()
     DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_cnt) + "\n");
     DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
     DEBUG_PRINT("    Number of TCP (not UDP) packets = " + to_string(tcp_cnt) + "\n");
-    DEBUG_PRINT("    Number of DNS packets = " + to_string(dns_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS responses = " + to_string(dns_cnt) + "\n");
     DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
     DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 }
@@ -188,7 +184,7 @@ void PcapParser::sniff_interface()
     DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_cnt) + "\n");
     DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
     DEBUG_PRINT("    Number of TCP (not UDP) packets = " + to_string(tcp_cnt) + "\n");
-    DEBUG_PRINT("    Number of DNS packets = " + to_string(dns_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS responses = " + to_string(dns_cnt) + "\n");
     DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
     DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
 }

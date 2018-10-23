@@ -8,6 +8,8 @@
 
 #include <string>
 #include <sstream>
+#include <iostream>
+#include <iomanip>
 #include "pcap_parser.h"
 #include "utils.h"
 
@@ -35,15 +37,17 @@ string bin_to_time(u_int32_t time)
     return string(buffer);
 }
 
-string bin_to_hexa(u_char *data, u_int count)
+string bin_to_hex(u_char *data, u_int count)
 {
-    stringstream ss;
+    char buffer[3] = {0};
+    string str;
 
-    for (u_int32_t i = 0; i < count; i++) {
-        ss << hex << static_cast<u_int16_t>(data[i]);
+    for (u_int i = 0; i < count; i++) {
+        snprintf(buffer, 3, "%02x", data[i]);
+        str.append(buffer);
     }
 
-    return ss.str();
+    return str;
 }
 
 string read_domain_name(u_char *dns_hdr, u_char *dns, u_int *shift)

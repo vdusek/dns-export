@@ -70,7 +70,7 @@ std::string bin_to_time(u_int32_t time);
 /**
  * Convert binary data to hexadecimal format and return it as a string.
  */
-std::string bin_to_hexa(u_char *data, u_int count);
+std::string bin_to_hex(u_char *data, u_int count);
 
 /**
  * Convert domain name in 3www6google3com format to www.google.com format and return it as a string.

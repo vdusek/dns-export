@@ -11,8 +11,8 @@
 #include <sys/param.h>
 #include <string>
 
-// debug
-extern int dns_ans_cnt;
+extern int dns_ans_cnt; // debug
+extern int dns_cnt; // debug
 
 /**
  * Types of DNS records.
