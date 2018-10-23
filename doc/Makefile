@@ -10,7 +10,7 @@
 #   $ make clean
 #   $ make clean-all
 
-NAME = isa-assignment
+NAME = isa-doc
 
 .PHONY: all clean clean-all
 

@@ -69,6 +69,7 @@ input(type="imudp" port="514")
 - http://yuba.stanford.edu/~casado/pcap/section4.html
 - http://www.firewall.cx/networking-topics/protocols/domain-name-system-dns/160-protocols-dns-query.html
 - http://www.keyboardbanger.com/dns-message-format-name-compression/
+- https://access.redhat.com/solutions/54363
 
 #### Pcap man
 - https://www.tcpdump.org/manpages/pcap_lookupnet.3pcap.html
@@ -85,6 +86,8 @@ input(type="imudp" port="514")
 - https://stackoverflow.com/questions/4583386/listening-using-pcap-with-timeout
 - https://stackoverflow.com/questions/21092415/force-c-structure-to-pack-tightly
 - https://stackoverflow.com/questions/2602823/in-c-c-whats-the-simplest-way-to-reverse-the-order-of-bits-in-a-byte
+- https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
+- https://stackoverflow.com/questions/361363/how-to-measure-time-in-milliseconds-using-ansi-c
 
 #### Wikipedia
 - https://en.wikipedia.org/wiki/Domain_Name_System
