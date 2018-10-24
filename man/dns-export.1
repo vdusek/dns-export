@@ -1,0 +1,67 @@
+.TH DNS-EXPORT 1
+
+
+.SH NAME
+dns-export \- export statistics of dns traffic to syslog server
+
+
+.SH SYNOPSIS
+.B dns-export
+[\fB\-r\fR \fIRESOURCE\fR | \fB\-i\fR \fIINTERFACE\fR] [\fB\-t\fR \fITIMEOUT\fR] \fB\-s\fR \fISERVER\fR [\fB\-h\fR]
+
+
+.SH DESCRIPTION
+.B dns-export
+is a program for sniffing DNS traffic on network interface or in pcap file. It filters DNS responses and goes through all answers. It recognizes domain name, type of DNS record and its specific data. Records with the same data are counted together. These statistics are being sent to the syslog server.
+
+
+.SH OPTIONS
+.TP
+\fB\-r\fR \fIRESOURCE\fR, \fB\-\-resource\fR=\fIRESOURCE\fR
+Name of a resource pcap file to be parse.
+
+.TP
+\fB\-i\fR \fIINTERFACE\fR, \fB\-\-interface\fR=\fIINTERFACE\fR
+Name of a network interface to sniff on.
+
+.TP
+\fB\-t\fR \fITIMEOUT\fR, \fB\-\-timeout\fR=\fITIMEOUT\fR
+Statistics will be sent to syslog server every TIMEOUT seconds. Default is 60.
+
+.TP
+\fB\-s\fR \fISERVER\fR, \fB\-\-server\fR=\fISERVER\fR
+Address of syslog server where statistics will be sent.
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help.
+
+
+.SH EXIT STATUSES
+.TP
+\fB0\fR  if OK
+
+.TP
+\fB1\fR  if command line arguments failure
+
+.TP
+\fB2\fR  if pcap parsing/sniffing failure (e.g. wrong name of dev/pcap file, ...)
+
+.TP
+\fB3\fR  if syslog failure (e.g. cannot connect, send, ...)
+
+.TP
+\fB9\fR  if system failure (e.g. malloc, socket, signal, ...)
+
+
+.SH AUTHOR
+.TP
+Written by Vladimir Dusek in October 2018.
+
+
+.SH COPYRIGHT
+.TP
+Copyright © 2018 Free Software Foundation, Inc. License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
+
+.TP
+This is free software: you are free to change and redistribute it. There is NO WARRANTY, to the extent permitted by law.
