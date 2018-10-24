@@ -7,22 +7,28 @@
 # File: Makefile
 
 # Usage:
-#   $ make
-#   $ make clean
-#   $ make clean-all
-#   $ make pack
+#   $ make              # Compile project
+#   $ make debug        # Compile project with debug purpose
+#   $ make clean        # Remove object files and deplist
+#   $ make clean-all    # Remove object files, deplist and binaries
+#   $ make pack         # Pack all necessary stuff
 
 CPPC = g++
-CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap -D DEBUG
+CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap
 DEPS = dep.list
 SRC = main.cpp arg_parser.cpp utils.cpp pcap_parser.cpp dns_parser.cpp syslog.cpp
 OBJ = $(SRC:.cpp=.o)
 EXEC = dns-export
 ARCHIVE = xdusek27.tar
 
-.PHONY: all clean clean-all pack
+.PHONY: all exec debug clean clean-all pack
 
-all: $(DEPS) $(EXEC)
+all: exec
+
+debug: CPPFLAGS += -D DEBUG -g
+debug: exec
+
+exec: $(DEPS) $(EXEC)
 
 %.o : %.cpp
 	$(CPPC) $(CPPFLAGS) -c $<
@@ -40,3 +46,6 @@ clean:
 
 clean-all:
 	rm -f $(OBJ) $(DEPS) $(EXEC)
+
+pack:
+	# ToDo
