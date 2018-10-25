@@ -149,46 +149,108 @@ Poslední část, MSG, se sestává opět ze dvou částí. První z nich je TAG
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Struktura programu}
-
-Aplikace se snaží držet objektově orientovaného paradigma. Kvůli spravování signálů (signal handler) bylo nutné některé věci definovat na globální úrovni.
-\smallskip
-
-Jako první se pracuje s instancí třídy ArgParser, která se stará o zpracování argumentů příkazové řádky a jejich validaci. Argumenty jsou uloženy jako privátní atributy a přístup k nim je definován pomocí příslušných metod.
-\smallskip
-
-Třída PcapParser využívá pcap knihovnu pro odchytávání síťového provozu na síťovém zařízení, případně pro parsování zdrojového pcap souboru. Dále vyfiltruje DNS provoz a zpracuje veškeré hlavičky až k aplikační vrstvě. Poradí si na síťové vrstvě s IPv4 i IPv6 datagramama a na transportní vrstvě s TCP i UDP komunikací.
-\smallskip
-
-Třída DnsParser zpracovává data DNS protokolu. Vytřídí pouze odpovědi (responses), které neskončili chybou. Projde všechny záznamy v sekci Answers a vybere data potřebná k vytvoření statistik. Statistiky ukládá do globální datové struktury unordered map jako dvojice klíč->hodnota. Klíč jsou získaná data z DNS záznamu a value je počet výskytů těchto dat za celou dobu odchytávání, případně za zpracování celého pcap souboru.
-\smallskip
-
-Třída Syslog se pak stará o komunikaci se syslog serverem. Poskytuje metody pro připojení, odpojení a odesílání zpráv na syslog.
-\smallskip
-
-Ve funkci signal handler jsou pak odchytávány signály, SIGUSR1 pro výpis statistik na STDOUT, SIGALRM pro odeslání statistik na syslog server a SIGINT pro ukončení aplikace (v případě odposlouchávání na síťovém rozhraní běží aplikace až do obdržení tohoto signálu).
-
-\newpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \section{Implementace}
 
-...
+\subsection{Struktura programu}
+
+Aplikace se snaží držet objektově orientovaného paradigma. Kvůli spravování signálů (\path{signal_handler}) bylo nutné některé objekty definovat na globální úrovni.
+\bigskip
+
+Jako první se pracuje s instancí třídy \path{ArgParser}, která se stará o zpracování argumentů příkazové řádky a jejich validaci. Argumenty jsou uloženy jako privátní atributy a přístup k nim je definován pomocí příslušných metod.
+\bigskip
+
+Třída \path{PcapParser} využívá \path{pcap} knihovnu pro odchytávání síťového provozu na síťovém zařízení, případně pro parsování zdrojového pcap souboru. Dále vyfiltruje DNS provoz a zpracuje veškeré hlavičky až k aplikační vrstvě. Poradí si na síťové vrstvě s IPv4 i IPv6 datagramama a na transportní vrstvě s TCP i UDP komunikací.
+\bigskip
+
+Třída \path{DnsParser} zpracovává data DNS protokolu. Vytřídí pouze odpovědi (responses), které neskončili chybou. Projde všechny záznamy v sekci Answers a vybere data potřebná k vytvoření statistik. Statistiky ukládá do globální datové struktury \path{unordered_map} jako dvojice klíč->hodnota. Klíč jsou získaná data z DNS záznamu a value je počet výskytů těchto dat za celou dobu odchytávání, případně za zpracování celého pcap souboru.
+\bigskip
+
+Třída \path{Syslog} se pak stará o komunikaci se syslog serverem. Poskytuje metody pro připojení, odpojení a odesílání zpráv na syslog server.
+\bigskip
+
+Ve funkci \path{signal_handler} jsou pak odchytávány signály. \path{SIGUSR1} pro výpis statistik na \path{STDOUT}, \path{SIGALRM} pro odeslání statistik na syslog server a \path{SIGINT} pro ukončení aplikace (v případě odposlouchávání na síťovém rozhraní běží aplikace až do obdržení tohoto signálu).
+\bigskip
+
+V modulu \path{utils} jsou implementovány pomocné funkce pro zpracovávání DNS komunikace, makro pro debug výpisy, nápověda, či výjimky pro zpracování chybného chování.
+\bigskip
+
+
+
+\subsection{Popis implementace}
+
+Aplikace je napsaná v jazyce \path{C/C++} podle aktuálního standardu \path{C++17}. Překlad je řešen pomocí Unixové utility \path{make} dle přiloženého \path{Makefile} souboru. Dále je napsána manuálová stránka ve značkovacím jazyce \path{troff} -- soubor \path{dns-exp.1}, kde je stručný popis aplikace a jsou blíže specifikovány argumenty a návratové kódy.
+\bigskip
+
+Pro zpracování argumentů příkazové řádky je využívána knihovna \path{getopt.h}. Syntaxe zadávání argumentů programu, by tedy měla odpovídat standardním posixovým nástrojům. Například jsou povoleny zkrácené (\path{-a} i dlouhé (\path{--argument}) varianty argumentů a jejich libovolné pořadí.
+\bigskip
+
+Pro zachytávání provozu na síťovém rozhraní, či zpracovávání pcap souboru aplikace využívá funkce \path{pcap} knihovny. Ta také komunikaci vyfiltruje pouze na DNS komunikaci. Funkce \path{pcap_loop} iteruje přes veškeré vyfiltrované rámce. Každý z nich je zpracováván ve statické metodě \path{packet_handle}. Zde je zpracování dále děleno podle protokolu na síťové vrstvě (\path{IPv4}, \path{IPv6}) a poté i podle protokolu na vrstvě transportní (\path{TCP}, \path{UDP}). Při \path{UDP} komunikaci je řízení rovnou předáváno modulu DnsParser. V případě TCP komunikaci, jsou data ukládána do globálního bufferu (\path{vector}) a zpracována až v případě nutnosti -- před odesláním na syslog server, či vypsáním na \path{STDOUT}. Je tomu tak z důvodu fragmentace aplikačních dat DNS na transportní vrstvě.
+\bigskip
+
+Modul \path{DnsParser} pak sbírá už konkrétní informace. Tedy na jaké doménové jméno byl kladen dotaz, jaký typ dotazu byl požadován a konkrétní odpověď. Jsou podporovány následující DNS typy: A, AAAA, CNAME, DNSKEY, DS, MX, NS, NSEC, OPT, PTR, RRSIG, SOA, SPF a TXT. Ostaní typy jsou značeny jako \path{unknown_type} a \path{unknown_data}. Modul využívá různých implementovaných struktur pro ulehčení práce s ukazateli. U struktur je použit atribut \path{__attribute__((packed))}, aby nedocházelo k jejich zarovnání (padding).
+\bigskip
+
+Komunikace se syslog serverem je řešeno pomocí knihovny \path{sys/socket.h}. Nejprve je navázáno komunikace se serverem a poté jsou zprávy (logs) postupně odesílány. Před skončením aplikace je spojení ukončeno a socket uzavřen.
+\bigskip
+
+
+
+\subsection{Návratové kódy}
+
+\begin{itemize}
+	\item 0 -- OK
+	\item 1 -- chyba zpracování argumentů příkazové řádky
+	\item 2 -- chyba při odposlouchávání síťového rozhraní či zpracování pcap souboru (např. neplatné jméno rozhraní nebo pcap souboru)
+	\item 3 -- chyba při komunikaci se syslog serverem (např. nepodařilo se navázat spojení)
+	\item 9 -- systémová chyba (např. malloc nealokoval paměť)
+\end{itemize}
 
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Testování}
+% \section{Testování}
 
-...
+% ...
 
-\newpage
+% \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Použití}
+
+\subsection{Překlad}
+
+\begin{description}
+	\item \path{$ make} -- pro standardní překlad programu
+	\item \path{$ make pack} -- pro překlad programu pro účely debugování (přepínač \path{-g}, debugovací vypisy)
+	\item \path{$ make clean} -- pro smazání všech objektových souborů a deplistu
+	\item \path{$ make clean-all} -- pro smazání všech objektových souborů, deplistu a binárního souboru
+\end{description}
+\smallskip
+
+
+
+\subsection{Spuštění}
+
+\path{$ ./dns-export [-r RESOURCE | -i INTERFACE] [-t TIMEOUT] -s SERVER [-h]}
+
+\begin{itemize}
+	\item \path{-r RESOURCE}, \path{--resource RESOURCE} -- Udává jméno pcap souboru, který se bude zpracovávát. Aspoň jeden z argumentů \path{resource} nebo \path{interface} musí být zadán.
+
+	\item \path{-i INTERFACE}, \path{--interface INTERFACE} -- Udává jméno rozhraní na kterém bude odposloucháván síťový provoz. Aspoň jeden z argumentů \path{resource} nebo \path{interface} musí být zadán.
+
+	\item \path{-t TIMEOUT}, \path{--timeout TIMEOUT} -- Časový interval v sekundách udávající, jak často statistiky budou zasílány. Výchozí hodnota 60 vteřin. Volitelný argument.
+
+	\item \path{-s SERVER}, \path{--server SERVER} -- Adresa syslog serveru kam statistiky budou zasílány. Povinný argument.
+
+	\item \path{-h}, \path{--help} -- Vypíše nápovědu na \path{STDOUT}. Volitelný argument.
+\end{itemize}
+\smallskip
+
+
+
+\subsection{Příklady spuštění}
 
 ...
 

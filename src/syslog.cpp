@@ -96,14 +96,12 @@ void Syslog::send_log(std::string message)
     string log = "<" + PRIORITY + ">" + to_string(VERSION) + " " + get_timestamp() + " " +
         get_ip() + " " + PROJ_NAME + " --- " + message;
 
-    DEBUG_PRINT("sending:\n");
-    DEBUG_PRINT(log + "\n");
+    DEBUG_PRINT("Sending:\n");
+    DEBUG_PRINT(log + "\n\n");
 
     if (send(m_socket_fd, log.c_str(), log.size(), 0) == -1) {
         throw SyslogException("sending log to the syslog server failed\nsend(): " + string(strerror(errno)) + "\n");
     }
-
-    DEBUG_PRINT("Log was sent successfully!\n\n");
 }
 
 void Syslog::disconnect()

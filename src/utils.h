@@ -51,7 +51,7 @@ const std::string HELP_TEXT =
     "    type of DNS record and its specific data. Records with the same data are counted\n"
     "    together. These statistics are being sent to the syslog server.\n"
     "Usage:\n"
-    "$ ./dns-export [-r RESOURCE | -i INTERFACE] [-t SECONDS] -s SERVER [-h]\n"
+    "$ ./dns-export [-r RESOURCE | -i INTERFACE] [-t TIMEOUT] -s SERVER [-h]\n"
     "    -r, --resource     Name of a resource pcap file to be parse.\n"
     "    -i, --interface    Name of a network interface to sniff on.\n"
     "    -t, --timeout      Statistics will be sent to syslog server every TIMEOUT seconds. Default is 60.\n"

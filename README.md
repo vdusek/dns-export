@@ -60,7 +60,7 @@ input(type="imudp" port="514")
 
 ## Sources
 
-#### Articles
+### Articles
 - http://www.tcpdump.org/pcap.html
 - https://eecs.wsu.edu/~sshaikot/docs/lbpcap/libpcap-tutorial.pdf
 - https://www.devdungeon.com/content/using-libpcap-c#load-pcap-file
@@ -71,28 +71,22 @@ input(type="imudp" port="514")
 - http://www.keyboardbanger.com/dns-message-format-name-compression/
 - https://access.redhat.com/solutions/54363
 
-#### Pcap man
-- https://www.tcpdump.org/manpages/pcap_lookupnet.3pcap.html
-- https://www.tcpdump.org/manpages/pcap_open_live.3pcap.html
-- https://www.tcpdump.org/manpages/pcap_open_offline.3pcap.html
-- https://www.tcpdump.org/manpages/pcap_compile.3pcap.html
-- https://www.tcpdump.org/manpages/pcap_setfilter.3pcap.html
-- https://www.tcpdump.org/manpages/pcap_loop.3pcap.html
-- https://www.tcpdump.org/manpages/pcap_close.3pcap.html
 
-#### Stackoverflow
-- https://stackoverflow.com/questions/7565300/identifying-dns-packets
-- https://stackoverflow.com/questions/1784136/simple-signals-c-programming-and-alarm-function
-- https://stackoverflow.com/questions/4583386/listening-using-pcap-with-timeout
-- https://stackoverflow.com/questions/21092415/force-c-structure-to-pack-tightly
-- https://stackoverflow.com/questions/2602823/in-c-c-whats-the-simplest-way-to-reverse-the-order-of-bits-in-a-byte
-- https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
-- https://stackoverflow.com/questions/361363/how-to-measure-time-in-milliseconds-using-ansi-c
+### Documentation
 
-#### Wikipedia
-- https://en.wikipedia.org/wiki/Domain_Name_System
-- https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions
-- https://en.wikipedia.org/wiki/List_of_DNS_record_types
+#### Posix
+- https://linux.die.net/man/3/
+- http://pubs.opengroup.org/onlinepubs/9699919799/
+- http://man7.org/linux/man-pages/man3/
+
+#### Pcap library
+- https://www.tcpdump.org/manpages/
+
+#### Manual pages
+- https://liw.fi/manpages/
+
+
+### Standards
 
 #### RFCs
 - https://tools.ietf.org/html/rfc1035
@@ -107,7 +101,24 @@ input(type="imudp" port="514")
 - https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml
 - https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
 
-#### C, C++ libraries
+
+### Stackoverflow
+- https://stackoverflow.com/questions/7565300/identifying-dns-packets
+- https://stackoverflow.com/questions/1784136/simple-signals-c-programming-and-alarm-function
+- https://stackoverflow.com/questions/4583386/listening-using-pcap-with-timeout
+- https://stackoverflow.com/questions/21092415/force-c-structure-to-pack-tightly
+- https://stackoverflow.com/questions/2602823/in-c-c-whats-the-simplest-way-to-reverse-the-order-of-bits-in-a-byte
+- https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
+- https://stackoverflow.com/questions/361363/how-to-measure-time-in-milliseconds-using-ansi-c
+
+
+### Wikipedia
+- https://en.wikipedia.org/wiki/Domain_Name_System
+- https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions
+- https://en.wikipedia.org/wiki/List_of_DNS_record_types
+
+
+### C, C++ libraries
 - https://en.wikipedia.org/wiki/C%2B%2B_Standard_Library
 - https://en.wikipedia.org/wiki/C_standard_library
 - https://en.wikipedia.org/wiki/C_POSIX_library

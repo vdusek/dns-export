@@ -28,6 +28,7 @@ PcapParser pcap_parser(FILTER_EXP);
 void send_stats_to_syslog()
 {
     try {
+        pcap_parser.parse_tcp();
         if (!syslog.connected()) {
             syslog.connect();
         }
@@ -48,8 +49,15 @@ void send_stats_to_syslog()
 // Print data from result_map on stdout.
 void print_stats_on_stdout()
 {
-    for (auto &elem: result_map) {
-        cout << elem.first << elem.second << endl;
+    try {
+        pcap_parser.parse_tcp();
+        for (auto &elem: result_map) {
+            cout << elem.first << elem.second << endl;
+        }
+    }
+    catch (SystemException &exc) {
+        cerr << PROJ_NAME << ": " << string(exc.what()) << flush;
+        exit(RET_SYS_ERR);
     }
 }
 
@@ -59,18 +67,15 @@ void signal_handler(int signal)
     switch (signal) {
         case SIGALRM:
             alarm(arg_parser.get_timeout());
-            pcap_parser.parse_tcp();
             send_stats_to_syslog();
             break;
 
         case SIGUSR1:
-            pcap_parser.parse_tcp();
             print_stats_on_stdout();
             break;
 
         case SIGINT:
             pcap_breakloop(handle);
-            pcap_parser.parse_tcp();
             send_stats_to_syslog();
             syslog.disconnect();
             DEBUG_PRINT("\n");
@@ -147,7 +152,6 @@ int main(int argc, char **argv)
 
     // In case of parsing file, send statistics to syslog
     if (!arg_parser.get_resource().empty()) {
-        pcap_parser.parse_tcp();
         send_stats_to_syslog();
         syslog.disconnect();
     }

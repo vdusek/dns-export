@@ -76,6 +76,9 @@ void PcapParser::parse_tcp()
            *tcp_2 = nullptr;
 
     bool *seen = static_cast<bool *>(calloc(m_tcp_buffer.size(), sizeof(bool)));
+    if (seen == nullptr) {
+        throw SystemException("malloc failure\n");
+    }
 
     for (u_int i = 0; i < m_tcp_buffer.size(); i++) {
         if (seen[i]) {
@@ -89,6 +92,9 @@ void PcapParser::parse_tcp()
         payload = m_tcp_buffer[i].second - tcp_hdr_len;
         dns_len = ntohs(*reinterpret_cast<u_int16_t *>(m_tcp_buffer[i].first + tcp_hdr_len));
         dns = reinterpret_cast<u_char *>(malloc(payload));
+        if (dns == nullptr) {
+            throw SystemException("malloc failure\n");
+        }
         memcpy(dns, reinterpret_cast<u_char *>(tcp_1) + tcp_hdr_len, payload);
 
         DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
@@ -117,6 +123,9 @@ void PcapParser::parse_tcp()
 
             if (ntohl(tcp_2->seq) == seq) {
                 dns = reinterpret_cast<u_char *>(realloc(dns, payload + payload_2));
+                if (dns == nullptr) {
+                    throw SystemException("malloc failure\n");
+                }
                 memcpy(dns + payload, reinterpret_cast<u_char *>(tcp_2) + tcp_hdr_len, payload_2);
                 dns_len -= payload_2;
                 seq += payload_2;
@@ -183,11 +192,13 @@ void PcapParser::tcp_handle(u_char *packet, u_int offset)
 
     // Copy memory of TCP segment
     auto *dns = reinterpret_cast<u_char *>(malloc(dns_size));
+    if (dns == nullptr) {
+        throw SystemException("malloc failure\n");
+    }
     memcpy(dns, tcp, dns_size);
 
     // Save the memory and its size to the pair
-    pair <u_char *, u_int> elem;
-    elem = make_pair(dns, dns_size);
+    pair <u_char *, u_int> elem = make_pair(dns, dns_size);
 
     // Save pair to the vector
     m_tcp_buffer.push_back(elem);
