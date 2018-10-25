@@ -24,7 +24,7 @@
 
 // Global constants
 const int BUFFER_SIZE = 512;
-const std::string FILTER_EXP = "port 53";
+const std::string FILTER_EXP = "src port 53";
 const std::string PROJ_NAME = "dns-export";
 const int DIGEST_PRINT_LEN = 20;
 
@@ -45,23 +45,25 @@ enum RetCode {
  * Help text.
  */
 const std::string HELP_TEXT =
-    "dns-export is a program for sniffing DNS traffic on network interface or in pcap file.\n"
-    "It filters DNS responses and goes through all answers. It recognizes domain name,\n"
-    "type of DNS record and its specific data. Records with the same data are counted\n"
-    "together. These statistics are being sent to the syslog server.\n"
+    "Description:\n"
+    "    dns-export is a program for sniffing DNS traffic on network interface or in pcap file.\n"
+    "    It filters DNS responses and goes through all answers. It recognizes domain name,\n"
+    "    type of DNS record and its specific data. Records with the same data are counted\n"
+    "    together. These statistics are being sent to the syslog server.\n"
     "Usage:\n"
-    "$ ./dns-export [-r file.pcap] [-i interface] [-s syslog-server] [-t seconds] [-h]\n"
-    "  -r, --resource     name of the resource .pcap file for parsing\n"
-    "  -i, --interface    name of the network interface for sniffing\n"
-    "  -s, --server       address of the syslog server where statistics will be sent\n"
-    "  -t, --timeout      value of timeout [s], statistics will be sent every n seconds\n"
-    "  -h, --help         print this help\n"
+    "$ ./dns-export [-r RESOURCE | -i INTERFACE] [-t SECONDS] -s SERVER [-h]\n"
+    "    -r, --resource     Name of a resource pcap file to be parse.\n"
+    "    -i, --interface    Name of a network interface to sniff on.\n"
+    "    -t, --timeout      Statistics will be sent to syslog server every TIMEOUT seconds. Default is 60.\n"
+    "    -s, --server       Address of syslog server where statistics will be sent.\n"
+    "    -h, --help         Print this help.\n"
     "Exit status:\n"
-    "  0  if OK\n"
-    "  1  if command line arguments failure\n"
-    "  2  if pcap parsing/sniffing failure (e.g. wrong name of dev/pcap file, ...)\n"
-    "  3  if syslog failure (e.g. cannot connect, send, ...)\n"
-    "  9  if system failure (e.g. malloc, socket, signal, ...)\n";
+    "    0  if OK\n"
+    "    1  if command line arguments failure\n"
+    "    2  if pcap parsing/sniffing failure (e.g. wrong name of dev/pcap file, ...)\n"
+    "    3  if syslog failure (e.g. cannot connect, send, ...)\n"
+    "    9  if system failure (e.g. malloc, socket, signal, ...)\n"
+    "See manual page for more information. ($ man -l 'path'/dns-export.1)\n";
 
 /**
  * Reverse bits in a byte.

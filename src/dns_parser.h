@@ -15,7 +15,7 @@ extern int dns_ans_cnt; // debug
 extern int dns_cnt; // debug
 
 /**
- * Types of DNS records.
+ * Types of supported DNS records.
  */
 enum TypeDnsRecord {
     DNS_A = 1,
@@ -258,6 +258,7 @@ private:
      * Parse record TXT/SPF.
      */
     std::string parse_record_txt_spf(u_char *dns);
+
 public:
     /**
      * Default constructor.

@@ -38,12 +38,6 @@ void DnsParser::parse(u_char *packet)
 
     dns_hdr = reinterpret_cast<dns_header_t *>(packet);
 
-    // Filter just responses
-    if (!(ntohs(dns_hdr->flags) & 0b1000000000000000)) {
-        DEBUG_PRINT("Not a response\n\n");
-        return;
-    }
-
     // Filter just no error responses
     if (ntohs(dns_hdr->flags) & 0b0000000000001111) {
         DEBUG_PRINT("Not without error\n\n");
@@ -153,7 +147,7 @@ void DnsParser::parse(u_char *packet)
                 type = "SOA";
                 break;
 
-            // ToDo: test this case, implement prase_spf
+            // ToDo: test this case, implement parse_spf
             case DNS_SPF:
                 data = parse_record_txt_spf(dns);
                 type = "SPF";
@@ -418,6 +412,8 @@ string DnsParser::parse_record_nsec(u_char *dns_hdr, u_char *dns)
     // 40 - 47
     if (num_bytes > 5) {
         byte = bitset<8>(reverse_bits(*dns));
+        if (byte.test(1))
+            bit_maps_field.append("OPT ");
         if (byte.test(3))
             bit_maps_field.append("DS ");
         if (byte.test(6))
@@ -456,8 +452,6 @@ string DnsParser::parse_record_nsec(u_char *dns_hdr, u_char *dns)
         if (byte.test(3))
             bit_maps_field.append("SPF ");
     }
-
-    // ToDo: determine more types of DNS records?
 
     data.append(bit_maps_field);
 

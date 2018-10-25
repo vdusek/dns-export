@@ -10,6 +10,7 @@
 
 #include <pcap/pcap.h>
 #include <string>
+#include <vector>
 #include "dns_parser.h"
 
 // Extern debug counters
@@ -33,26 +34,27 @@ private:
     bpf_program m_compiled_filter;
     std::string m_resource;
     std::string m_interface;
+    static std::vector<std::pair <u_char *, u_int>> m_tcp_buffer;
 
     /**
      * Handle UDP packet.
      */
-    static void udp_handle(u_char *packet);
+    static void udp_handle(u_char *packet, u_int offset);
 
     /**
      * Handle TCP packet.
      */
-    static void tcp_handle(u_char *packet);
+    static void tcp_handle(u_char *packet, u_int offset);
 
     /**
      * Handle IPv4 datagram.
      */
-    static void ipv4_handle(u_char *packet);
+    static void ipv4_handle(u_char *packet, u_int offset);
 
     /**
      * Handle IPv6 datagram.
      */
-    static void ipv6_handle(u_char *packet);
+    static void ipv6_handle(u_char *packet, u_int offset);
 
     /**
      * Handle ethernet frame.
@@ -69,6 +71,11 @@ public:
      * Destructor, close the capture device and deallocate resources.
      */
     ~PcapParser();
+
+    /**
+     * Parse TCP packets and call DNS parse.
+     */
+    void parse_tcp();
 
     /**
      * Set resource name.

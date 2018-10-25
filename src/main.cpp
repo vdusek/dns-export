@@ -7,6 +7,7 @@
 // File: main.cpp
 
 #include <unistd.h>
+#include <vector>
 #include "utils.h"
 #include "arg_parser.h"
 #include "pcap_parser.h"
@@ -20,14 +21,17 @@ Syslog syslog;
 // Global instance of ArgParser because of signal_handler
 ArgParser arg_parser;
 
+// Global instance of PcapParser because of signal_handler
+PcapParser pcap_parser(FILTER_EXP);
+
 // Connect to syslog if not connected and send data from result_map to syslog server.
-void send_to_syslog()
+void send_stats_to_syslog()
 {
     try {
         if (!syslog.connected()) {
             syslog.connect();
         }
-        for (pair<string, int> elem: result_map) {
+        for (auto &elem: result_map) {
             syslog.send_log(elem.first + to_string(elem.second));
         }
     }
@@ -41,24 +45,33 @@ void send_to_syslog()
     }
 }
 
+// Print data from result_map on stdout.
+void print_stats_on_stdout()
+{
+    for (auto &elem: result_map) {
+        cout << elem.first << elem.second << endl;
+    }
+}
+
 // Signal handler
 void signal_handler(int signal)
 {
     switch (signal) {
         case SIGALRM:
             alarm(arg_parser.get_timeout());
-            send_to_syslog();
+            pcap_parser.parse_tcp();
+            send_stats_to_syslog();
             break;
 
         case SIGUSR1:
-            for (pair<string, int> elem: result_map) {
-                cout << elem.first << elem.second << endl;
-            }
+            pcap_parser.parse_tcp();
+            print_stats_on_stdout();
             break;
 
         case SIGINT:
             pcap_breakloop(handle);
-            send_to_syslog();
+            pcap_parser.parse_tcp();
+            send_stats_to_syslog();
             syslog.disconnect();
             DEBUG_PRINT("\n");
             DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
@@ -111,7 +124,6 @@ int main(int argc, char **argv)
     }
 
     // Parse pcap file or sniff on network interface
-    PcapParser pcap_parser(FILTER_EXP);
     try {
         if (!arg_parser.get_resource().empty()) {
             pcap_parser.set_resource(arg_parser.get_resource());
@@ -135,7 +147,8 @@ int main(int argc, char **argv)
 
     // In case of parsing file, send statistics to syslog
     if (!arg_parser.get_resource().empty()) {
-        send_to_syslog();
+        pcap_parser.parse_tcp();
+        send_stats_to_syslog();
         syslog.disconnect();
     }
 

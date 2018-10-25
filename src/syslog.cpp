@@ -116,7 +116,6 @@ void Syslog::disconnect()
     DEBUG_PRINT("Disconnected from the syslog server.\n\n");
 }
 
-// ToDo: refactor this method
 string Syslog::get_timestamp()
 {
     char buffer[BUFFER_SIZE] = {0};
