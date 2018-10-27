@@ -252,17 +252,208 @@ Komunikace se syslog serverem je řešeno pomocí knihovny \path{sys/socket.h}. 
 
 \subsection{Příklady spuštění}
 
-...
+\subsubsection{Zpracovávání pcap souboru}
+
+Spuštění aplikace pro zpracování \path{dns.pcap} souboru a odesílání zpráv (logs) na lokální syslog server.
+
+\begin{center}
+    \fbox{\path{$ ./dns-export -r dns.pcap -s localhost}}
+\end{center}
+
+Po ukončení běhu aplikace si můžeme zobrazit výsledné zprávý. Ty jsou uloženy podle konfigurace syslogu. Výchozí cesta je \path{/var/log/messages}. Pro jejich zobrazení můžeme použít například nástroj \path{journalctl}, který slouží pro zobrazení systémových zpráv. Ten obsahuje řadu přepínačů pro vyfiltrování konkrétnějšího obsahu. Pokud máme dostupná práva \path{root}, můžeme si soubor přímo vypsat. Například utilita \path{tail} nám vypíše posledních n řádků souboru.
+
+\begin{center}
+    \fbox{\path{# tail -n 5 /var/log/messages}}
+\end{center}
+
+\scriptsize
+
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- www.youtube.com CNAME youtube-ui.l.google.com 1}
+
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- widgets.getsitecontrol.com CNAME gscwidgets.b-cdn.net 1}
+
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- youtube-ui.l.google.com A 172.217.23.238 1}
+
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- www.yahoo.com CNAME atsv2-fp-shed.wg1.b.yahoo.com 1}
+
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- photos-ugc.l.googleusercontent.com A 172.217.23.225 1}
+
+\normalsize
+
+\subsubsection{Odposlouchávání na síťovém rozhraní}
+
+Spuštění aplikace pro odposloucháváné provozu na síťovém rozhraní \path{eth0}. Jsou vyžadována práva \path{root}.
+
+\begin{center}
+    \fbox{\path{# ./dns-export -i eth0 -s localhost -t 30}}
+\end{center}
+
+Při obdržení signálu \path{SIGUSR1} nám aplikace vypíše na \path{STDOUT} dosud nasbírané statistiky. Jelikož zasílámě signál aplikaci která běží s právama \path{root}, potřebujeme je i při zaslání signálu. Abychom mohli zaslat procesu signál, potřebujeme znát jeho ID. To zjistíme například:
+
+\begin{center}
+    \fbox{\path{$ ps aux | grep dns-export}}
+\end{center}
+
+\scriptsize
+
+\path{root      6445  0.0  0.1 372536  9484 pts/1    S+   13:05   0:00 sudo ./dns-export -i eth0 -s localhost -t 30}
+
+\normalsize
+
+\medskip
+
+Zaslání signálu pak vypadá následovně:
+
+\begin{center}
+    \fbox{\path{# kill -SIGUSR1 6445}}
+\end{center}
+
+\scriptsize
+
+\path{i.stack.imgur.com.cdn.cloudflare.net A 104.16.30.34 1}
+
+\path{i.stack.imgur.com CNAME i.stack.imgur.com.cdn.cloudflare.net 1}
+
+\path{cdn.sstatic.net A 151.101.193.69 1}
+
+\path{stackoverflow.com A 151.101.1.69 1}
+
+\path{cdn.sstatic.net A 151.101.1.69 1}
+
+\normalsize
+
+\medskip
+
+Aplikace běží až do obdržení signálu \path{SIGINT}, ten lze zaslat aplikaci klávesami \path{CTRL+C}. Ještě před skončením jsou zaslány sesbírané statistiky na syslog server. Zobrazit si je můžeme stejně jako v případě se zpracováním pcap souboru.
 
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Dodatečné informace}
+\section{Závěr}
 
-...
+Celý projekt se skládá z následujících zdrojových souborů \path{C++}: \path{main.cpp}, \path{arg_parser.cpp}, \path{arg_parser.h}, \path{pcap_parser.cpp}, \path{pcap_parser.h}, \path{dns_parser.cpp}, \path{dns_parser.h}, \path{syslog.cpp}, \path{syslog.h}, \path{utils.cpp}, \path{utils.h} a souboru pro překlad \path{Makefile}. To je celkem 2208 řádků kódu. Velikost výsledného binárního souboru \path{dns-export} je 182.3\,KiB. Dále dokumentace v sázecím systému \path{LaTeX}: \path{manual.pdf} a manuálové stránky ve značkovacím jazyce \path{troff}: \path{dns-export.1}.
+\bigskip
+
+Práce na projektu byla bez pochyby velmi zajímavá a přínosná. Zdokonalil jsem se ve psaní v C++, poznal pcap knihovnu, na vlastní kůži viděl jak funguje TCP/IP zásobník, poměrně do detailů si nastudoval DNS, vyzkoušel si komunikaci se syslogem a napsal manuálovou stránku. Na druhou stranu musím zmínit, že časová náročnost projektu velmi přesahovala deklarovanu časovou zátěž v kartě předmětu. K čemu tu pak máme kreditový systém ECTS s cílem sjednocovat studijní zátěž vysokoškolského studia napříč EU. Takto přestřelená časová zátěž je pak pouze na úkor docházky na přednáškách, práce na projektech do jiných předmětů, či, nyní ve třetím ročníku, na bakalářské práci.
 
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\renewcommand{\refname}{Zdroje}
+\addcontentsline{toc}{section}{Zdroje}
+\begin{thebibliography}{9}
+\bibitem{bl}
+    IANA,
+    Domain Name System Security (DNSSEC) Algorithm Numbers [online],
+    2017-03-10,
+    \url{https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    IANA,
+    Delegation Signer (DS) Resource Record (RR) Type Digest Algorithms [online],
+    2012-04-13,
+    \url{https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    IANA,
+    Domain Name System (DNS) Parameters [online],
+    2018-09-17,
+    \url{https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Network Working Group,
+    RFC 1035 - Domain names - implementation and specification [online],
+    1987-11,
+    \url{https://tools.ietf.org/html/rfc1035},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Network Working Group,
+    RFC 3164 - The BSD syslog Protocol [online],
+    2001-08,
+    \url{https://tools.ietf.org/html/rfc3164},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Network Working Group,
+    RFC 3339 - Date and Time on the Internet: Timestamps [online],
+    2002-07,
+    \url{https://tools.ietf.org/html/rfc3339},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Network Working Group,
+    RFC 3596 - DNS Extensions to Support IP Version 6 [online],
+    2003-10,
+    \url{https://tools.ietf.org/html/rfc3596},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Network Working Group,
+    RFC 4034 - Resource Records for the DNS Security Extensions [online],
+    2005-03,
+    \url{https://tools.ietf.org/html/rfc4034},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Network Working Group,
+    RFC 5424 - The Syslog Protocol [online],
+    2009-03,
+    \url{https://tools.ietf.org/html/rfc5424},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Wikipedia contributors,
+    Domain Name System [online],
+    2018-10-26,
+    \url{https://en.wikipedia.org/wiki/Domain_Name_System/},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Wikipedia contributors,
+    List of DNS record types [online],
+    2018-10-18,
+    \url{https://en.wikipedia.org/wiki/List_of_DNS_record_types/},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Wikipedia contributors,
+    Domain Name System Security Extensions [online],
+    2018-10-05,
+    \url{https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Redhat,
+    How to configure remote logging with rsyslog [online],
+    2018-08-29,
+    \url{https://access.redhat.com/solutions/54363},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Keyboard Banger,
+    DNS Message Format And Name Compression [online],
+    2015-09-25,
+    \url{http://www.keyboardbanger.com/dns-message-format-name-compression/},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    firewall.cx,
+    DNS QUERY MESSAGE FORMAT [online],
+    2012,
+    \url{http://www.firewall.cx/networking-topics/protocols/domain-name-system-dns/160-protocols-dns-query.html},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Michael Kerrisk, man7.org,
+    linux/man-pages [online],
+    2018-10,
+    \url{http://man7.org/linux/man-pages/man3/},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    Lars Wirzenius,
+    Writing manual pages [online],
+    2018-07,
+    \url{https://liw.fi/manpages/},
+    [cit. 2018-10-27]
+\bibitem{bl}
+    The Tcpdump team,
+    Pcap library manual page [online],
+    2018-10,
+    \url{https://www.tcpdump.org/manpages/},
+    [cit. 2018-10-27]
+\end{thebibliography}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \end{document}
