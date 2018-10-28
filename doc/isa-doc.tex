@@ -51,7 +51,7 @@
 
 \section{Úvod}
 
-Dokumentace popisuje řešení projektu a vysvětluje danou problematiku. Naší úlohou bylo nastudovat si potřebné informace a následně navrhnout, naprogramovat a otestovat síťovou službu, navíc k ní napsat manuálovou stránku. Varianta 2, kterou jsem řešil spočívala ve vytvoření aplikace dns-export. Ta odposlouchává síťový provoz na síťovém rozhraní, případně zpracovává pcap soubor, ve kterém je nějaká síťová komunikace již zaznamenána. Aplikace vyfiltruje DNS provoz a následně zpracovává jednotlivé pakety, konkrétně DNS odpovědi (responses). V každé odpovědi projde skrz všechny odpovědní záznamy (Answer resource records) a vyčte určité informace. Doménové jméno, typ DNS záznamu a data specifická pro každý typ. Dále je zaznamenán výskyt těchto informací, shodné jsou sečteny. Tyto výsledky jsou zasílany na syslog server ve formátu odpovídající syslog protokolu.
+Dokumentace popisuje řešení projektu a vysvětluje danou problematiku. Naší úlohou bylo nastudovat si potřebné informace a následně navrhnout, naprogramovat a otestovat síťovou službu, navíc k~ní napsat manuálovou stránku. Varianta 2, kterou jsem řešil spočívala ve vytvoření aplikace dns-export. Ta odposlouchává síťový provoz na síťovém rozhraní, případně zpracovává pcap soubor, ve kterém je nějaká síťová komunikace již zaznamenána. Aplikace vyfiltruje DNS provoz a následně zpracovává jednotlivé pakety, konkrétně DNS odpovědi (responses). V~každé odpovědi projde skrz všechny odpovědní záznamy (Answer resource records) a vyčte určité informace. Doménové jméno, typ DNS záznamu a data specifická pro každý typ. Dále je zaznamenán výskyt těchto informací, shodné jsou sečteny. Tyto výsledky jsou zasílany na syslog server ve formátu odpovídající syslog protokolu.
 
 \newpage
 
@@ -65,7 +65,7 @@ Síťová komunikace je kvůli své komplexnosti rozdělena do tzv. vrstev, kter
 
 \subsubsection{Vrstva síťového rozhraní}
 
-Nejnižší vrstva, umožňuje přístup k fyzickému médiu. Je specifická pro každou síť v závislosti na její implementaci. (např. Ethernet)
+Nejnižší vrstva, umožňuje přístup k~fyzickému médiu. Je specifická pro každou síť v~závislosti na její implementaci. (např. Ethernet)
 
 \subsubsection{Síťová vrstva}
 
@@ -73,10 +73,10 @@ Vrstva zajišťuje síťovou adresaci, směrování a předávání datagramů. 
 
 \subsubsection{Transportní vrstva}
 
-Poskytuje transportní služby pro kontrolu celistvosti dat. Jedná se o spolehlivé spojení (TCP) nebo nespolehlivé spojení (UDP). Je implementována až v koncových zařízeních, proto umožňuje přizpůsobit chování sítě potřebám aplikace.
+Poskytuje transportní služby pro kontrolu celistvosti dat. Jedná se o~spolehlivé spojení (TCP) nebo nespolehlivé spojení (UDP). Je implementována až v~koncových zařízeních, proto umožňuje přizpůsobit chování sítě potřebám aplikace.
 
 \subsubsection{Aplikační vrstva}
-Vrstva, která se stará o přenos konkrétních aplikačních dat. (např. SSH, FTP, HTTP, DHCP, DNS)
+Vrstva, která se stará o~přenos konkrétních aplikačních dat. (např. SSH, FTP, HTTP, DHCP, DNS)
 
 \begin{figure}[htp]
     \centering
@@ -103,15 +103,15 @@ DNS zpráva má následující formát:
 	\end{TAB}
 \end{table}
 
-Header (hlavička) blíže specifikuje DNS zprávu. Například zda se jedná o dotaz, či odpověď, zda nastala nějaká chyba, nebo kolik zpráva obsahuje DNS záznamů (resource records) a jakých jsou typů. \\
+Header (hlavička) blíže specifikuje DNS zprávu. Například zda se jedná o~dotaz, či odpověď, zda nastala nějaká chyba, nebo kolik zpráva obsahuje DNS záznamů (resource records) a jakých jsou typů. \\
 
-V sekci Question (dotaz) jsou informace které chce tázající zjistit. Konkrétně doménové jméno na které se dotazuje, typ a třída záznamu. \\
+V~sekci Question (dotaz) jsou informace které chce tázající zjistit. Konkrétně doménové jméno na které se dotazuje, typ a třída záznamu. \\
 
 Answer, Authority a Additional jsou pak záznamy. Všechny mají shodný formát a obsahují různé odpovědi, případně cestu jak se odpovědí dosáhlo.
 
 \subsection{Syslog protokol}
 
-Syslog protokol je standard pro záznam programových zpráv (logů). Program podle protokolu posílá zprávy napříč sítí ke kolektorům logovacích zpráv -- syslog serverům. Jedná se tedy o architekturu klient-server. Komunikace může probíhat přes UDP na portu 514 nebo přes TCP na portu 6541.
+Syslog protokol je standard pro záznam programových zpráv (logů). Program podle protokolu posílá zprávy napříč sítí ke kolektorům logovacích zpráv -- syslog serverům. Jedná se tedy o~architekturu klient-server. Komunikace může probíhat přes UDP na portu 514 nebo přes TCP na portu 6541.
 
 \subsubsection{Formát zpráv}
 
@@ -139,7 +139,7 @@ Priority value se vypočítá následujícím vzorcem:
 	\fbox{HEADER = TIMESTAMP HOSTNAME} \\
 \end{center}
 
-Poslední část, MSG, se sestává opět ze dvou částí. První z nich je TAG, což je název procesu, který zprávu vygeneroval a druhá je CONTENT, tedy konkrétní obsah zprávy.
+Poslední část, MSG, se sestává opět ze dvou částí. První z~nich je TAG, což je název procesu, který zprávu vygeneroval a druhá je CONTENT, tedy konkrétní obsah zprávy.
 
 \begin{center}
 	\fbox{MSG = TAG CONTENT} \\
@@ -156,38 +156,38 @@ Poslední část, MSG, se sestává opět ze dvou částí. První z nich je TAG
 Aplikace se snaží držet objektově orientovaného paradigma. Kvůli spravování signálů (\path{signal_handler}) bylo nutné některé objekty definovat na globální úrovni.
 \bigskip
 
-Jako první se pracuje s instancí třídy \path{ArgParser}, která se stará o zpracování argumentů příkazové řádky a jejich validaci. Argumenty jsou uloženy jako privátní atributy a přístup k nim je definován pomocí příslušných metod.
+Jako první se pracuje s~instancí třídy \path{ArgParser}, která se stará o~zpracování argumentů příkazové řádky a jejich validaci. Argumenty jsou uloženy jako privátní atributy a přístup k~nim je definován pomocí příslušných metod.
 \bigskip
 
-Třída \path{PcapParser} využívá \path{pcap} knihovnu pro odchytávání síťového provozu na síťovém zařízení, případně pro parsování zdrojového pcap souboru. Dále vyfiltruje DNS provoz a zpracuje veškeré hlavičky až k aplikační vrstvě. Poradí si na síťové vrstvě s IPv4 i IPv6 datagramama a na transportní vrstvě s TCP i UDP komunikací.
+Třída \path{PcapParser} využívá \path{pcap} knihovnu pro odchytávání síťového provozu na síťovém zařízení, případně pro parsování zdrojového pcap souboru. Dále vyfiltruje DNS provoz a zpracuje veškeré hlavičky až k~aplikační vrstvě. Poradí si na síťové vrstvě s~IPv4 i IPv6 datagramama a na transportní vrstvě s~TCP i UDP komunikací.
 \bigskip
 
-Třída \path{DnsParser} zpracovává data DNS protokolu. Vytřídí pouze odpovědi (responses), které neskončili chybou. Projde všechny záznamy v sekci Answers a vybere data potřebná k vytvoření statistik. Statistiky ukládá do globální datové struktury \path{unordered_map} jako dvojice klíč->hodnota. Klíč jsou získaná data z DNS záznamu a value je počet výskytů těchto dat za celou dobu odchytávání, případně za zpracování celého pcap souboru.
+Třída \path{DnsParser} zpracovává data DNS protokolu. Vytřídí pouze odpovědi (responses), které neskončili chybou. Projde všechny záznamy v~sekci Answers a vybere data potřebná k~vytvoření statistik. Statistiky ukládá do globální datové struktury \path{unordered_map} jako dvojice klíč->hodnota. Klíč jsou získaná data z~DNS záznamu a value je počet výskytů těchto dat za celou dobu odchytávání, případně za zpracování celého pcap souboru.
 \bigskip
 
-Třída \path{Syslog} se pak stará o komunikaci se syslog serverem. Poskytuje metody pro připojení, odpojení a odesílání zpráv na syslog server.
+Třída \path{Syslog} se pak stará o~komunikaci se syslog serverem. Poskytuje metody pro připojení, odpojení a odesílání zpráv na syslog server.
 \bigskip
 
-Ve funkci \path{signal_handler} jsou pak odchytávány signály. \path{SIGUSR1} pro výpis statistik na \path{STDOUT}, \path{SIGALRM} pro odeslání statistik na syslog server a \path{SIGINT} pro ukončení aplikace (v případě odposlouchávání na síťovém rozhraní běží aplikace až do obdržení tohoto signálu).
+Ve funkci \path{signal_handler} jsou pak odchytávány signály. \path{SIGUSR1} pro výpis statistik na \path{STDOUT}, \path{SIGALRM} pro odeslání statistik na syslog server a \path{SIGINT} pro ukončení aplikace (v~případě odposlouchávání na síťovém rozhraní běží aplikace až do obdržení tohoto signálu).
 \bigskip
 
-V modulu \path{utils} jsou implementovány pomocné funkce pro zpracovávání DNS komunikace, makro pro debug výpisy, nápověda, či výjimky pro zpracování chybného chování.
+V~modulu \path{utils} jsou implementovány pomocné funkce pro zpracovávání DNS komunikace, makro pro debug výpisy, nápověda, či výjimky pro zpracování chybného chování.
 \bigskip
 
 
 
 \subsection{Popis implementace}
 
-Aplikace je napsaná v jazyce \path{C/C++} podle aktuálního standardu \path{C++17}. Překlad je řešen pomocí Unixové utility \path{make} dle přiloženého \path{Makefile} souboru. Dále je napsána manuálová stránka ve značkovacím jazyce \path{troff} -- soubor \path{dns-exp.1}, kde je stručný popis aplikace a jsou blíže specifikovány argumenty a návratové kódy.
+Aplikace je napsaná v~jazyce \path{C/C++} podle aktuálního standardu \path{C++17}. Překlad je řešen pomocí Unixové utility \path{make} dle přiloženého \path{Makefile} souboru. Dále je napsána manuálová stránka ve značkovacím jazyce \path{troff} -- soubor \path{dns-exp.1}, kde je stručný popis aplikace a jsou blíže specifikovány argumenty a návratové kódy.
 \bigskip
 
 Pro zpracování argumentů příkazové řádky je využívána knihovna \path{getopt.h}. Syntaxe zadávání argumentů programu, by tedy měla odpovídat standardním posixovým nástrojům. Například jsou povoleny zkrácené (\path{-a} i dlouhé (\path{--argument}) varianty argumentů a jejich libovolné pořadí.
 \bigskip
 
-Pro zachytávání provozu na síťovém rozhraní, či zpracovávání pcap souboru aplikace využívá funkce \path{pcap} knihovny. Ta také komunikaci vyfiltruje pouze na DNS komunikaci. Funkce \path{pcap_loop} iteruje přes veškeré vyfiltrované rámce. Každý z nich je zpracováván ve statické metodě \path{packet_handle}. Zde je zpracování dále děleno podle protokolu na síťové vrstvě (\path{IPv4}, \path{IPv6}) a poté i podle protokolu na vrstvě transportní (\path{TCP}, \path{UDP}). Při \path{UDP} komunikaci je řízení rovnou předáváno modulu DnsParser. V případě TCP komunikaci, jsou data ukládána do globálního bufferu (\path{vector}) a zpracována až v případě nutnosti -- před odesláním na syslog server, či vypsáním na \path{STDOUT}. Je tomu tak z důvodu fragmentace aplikačních dat DNS na transportní vrstvě.
+Pro zachytávání provozu na síťovém rozhraní, či zpracovávání pcap souboru aplikace využívá funkce \path{pcap} knihovny. Ta také komunikaci vyfiltruje pouze na DNS komunikaci. Funkce \path{pcap_loop} iteruje přes veškeré vyfiltrované rámce. Každý z~nich je zpracováván ve statické metodě \path{packet_handle}. Zde je zpracování dále děleno podle protokolu na síťové vrstvě (\path{IPv4}, \path{IPv6}) a poté i podle protokolu na vrstvě transportní (\path{TCP}, \path{UDP}). Při \path{UDP} komunikaci je řízení rovnou předáváno modulu DnsParser. V~případě TCP komunikaci, jsou data ukládána do globálního bufferu (\path{vector}) a zpracována až v~případě nutnosti -- před odesláním na syslog server, či vypsáním na \path{STDOUT}. Je tomu tak z~důvodu fragmentace aplikačních dat DNS na transportní vrstvě.
 \bigskip
 
-Modul \path{DnsParser} pak sbírá už konkrétní informace. Tedy na jaké doménové jméno byl kladen dotaz, jaký typ dotazu byl požadován a konkrétní odpověď. Jsou podporovány následující DNS typy: A, AAAA, CNAME, DNSKEY, DS, MX, NS, NSEC, OPT, PTR, RRSIG, SOA, SPF a TXT. Ostaní typy jsou značeny jako \path{unknown_type} a \path{unknown_data}. Modul využívá různých implementovaných struktur pro ulehčení práce s ukazateli. U struktur je použit atribut \path{__attribute__((packed))}, aby nedocházelo k jejich zarovnání (padding).
+Modul \path{DnsParser} pak sbírá už konkrétní informace. Tedy na jaké doménové jméno byl kladen dotaz, jaký typ dotazu byl požadován a konkrétní odpověď. Jsou podporovány následující DNS typy: A, AAAA, CNAME, DNSKEY, DS, MX, NS, NSEC, OPT, PTR, RRSIG, SOA, SPF a TXT. Ostaní typy jsou značeny jako \path{unknown_type} a \path{unknown_data}. Modul využívá různých implementovaných struktur pro ulehčení práce s~ukazateli. U~struktur je použit atribut \path{__attribute__((packed))}, aby nedocházelo k~jejich zarovnání (padding).
 \bigskip
 
 Komunikace se syslog serverem je řešeno pomocí knihovny \path{sys/socket.h}. Nejprve je navázáno komunikace se serverem a poté jsou zprávy (logs) postupně odesílány. Před skončením aplikace je spojení ukončeno a socket uzavřen.
@@ -236,11 +236,11 @@ Komunikace se syslog serverem je řešeno pomocí knihovny \path{sys/socket.h}. 
 \path{$ ./dns-export [-r RESOURCE | -i INTERFACE] [-t TIMEOUT] -s SERVER [-h]}
 
 \begin{itemize}
-	\item \path{-r RESOURCE}, \path{--resource RESOURCE} -- Udává jméno pcap souboru, který se bude zpracovávát. Aspoň jeden z argumentů \path{resource} nebo \path{interface} musí být zadán.
+	\item \path{-r RESOURCE}, \path{--resource RESOURCE} -- Udává jméno pcap souboru, který se bude zpracovávát. Aspoň jeden z~argumentů \path{resource} nebo \path{interface} musí být zadán.
 
-	\item \path{-i INTERFACE}, \path{--interface INTERFACE} -- Udává jméno rozhraní na kterém bude odposloucháván síťový provoz. Aspoň jeden z argumentů \path{resource} nebo \path{interface} musí být zadán.
+	\item \path{-i INTERFACE}, \path{--interface INTERFACE} -- Udává jméno rozhraní na kterém bude odposloucháván síťový provoz. Aspoň jeden z~argumentů \path{resource} nebo \path{interface} musí být zadán.
 
-	\item \path{-t TIMEOUT}, \path{--timeout TIMEOUT} -- Časový interval v sekundách udávající, jak často statistiky budou zasílány. Výchozí hodnota 60 vteřin. Volitelný argument.
+	\item \path{-t TIMEOUT}, \path{--timeout TIMEOUT} -- Časový interval v~sekundách udávající, jak často statistiky budou zasílány. Výchozí hodnota 60 vteřin. Volitelný argument.
 
 	\item \path{-s SERVER}, \path{--server SERVER} -- Adresa syslog serveru kam statistiky budou zasílány. Povinný argument.
 
@@ -272,11 +272,11 @@ Po ukončení běhu aplikace si můžeme zobrazit výsledné zprávý. Ty jsou u
 
 \path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- widgets.getsitecontrol.com CNAME gscwidgets.b-cdn.net 1}
 
-\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- youtube-ui.l.google.com A 172.217.23.238 1}
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- youtube-ui.l.google.com A~172.217.23.238 1}
 
 \path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- www.yahoo.com CNAME atsv2-fp-shed.wg1.b.yahoo.com 1}
 
-\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- photos-ugc.l.googleusercontent.com A 172.217.23.225 1}
+\path{<134>1 2018-10-26T13:57:28.703Z 192.168.122.1 dns-export --- photos-ugc.l.googleusercontent.com A~172.217.23.225 1}
 
 \normalsize
 
@@ -288,7 +288,7 @@ Spuštění aplikace pro odposloucháváné provozu na síťovém rozhraní \pat
     \fbox{\path{# ./dns-export -i eth0 -s localhost -t 30}}
 \end{center}
 
-Při obdržení signálu \path{SIGUSR1} nám aplikace vypíše na \path{STDOUT} dosud nasbírané statistiky. Jelikož zasílámě signál aplikaci která běží s právama \path{root}, potřebujeme je i při zaslání signálu. Abychom mohli zaslat procesu signál, potřebujeme znát jeho ID. To zjistíme například:
+Při obdržení signálu \path{SIGUSR1} nám aplikace vypíše na \path{STDOUT} dosud nasbírané statistiky. Jelikož zasílámě signál aplikaci která běží s~právama \path{root}, potřebujeme je i při zaslání signálu. Abychom mohli zaslat procesu signál, potřebujeme znát jeho ID. To zjistíme například:
 
 \begin{center}
     \fbox{\path{$ ps aux | grep dns-export}}
@@ -310,21 +310,21 @@ Zaslání signálu pak vypadá následovně:
 
 \scriptsize
 
-\path{i.stack.imgur.com.cdn.cloudflare.net A 104.16.30.34 1}
+\path{i.stack.imgur.com.cdn.cloudflare.net A~104.16.30.34 1}
 
 \path{i.stack.imgur.com CNAME i.stack.imgur.com.cdn.cloudflare.net 1}
 
-\path{cdn.sstatic.net A 151.101.193.69 1}
+\path{cdn.sstatic.net A~151.101.193.69 1}
 
-\path{stackoverflow.com A 151.101.1.69 1}
+\path{stackoverflow.com A~151.101.1.69 1}
 
-\path{cdn.sstatic.net A 151.101.1.69 1}
+\path{cdn.sstatic.net A~151.101.1.69 1}
 
 \normalsize
 
 \medskip
 
-Aplikace běží až do obdržení signálu \path{SIGINT}, ten lze zaslat aplikaci klávesami \path{CTRL+C}. Ještě před skončením jsou zaslány sesbírané statistiky na syslog server. Zobrazit si je můžeme stejně jako v případě se zpracováním pcap souboru.
+Aplikace běží až do obdržení signálu \path{SIGINT}, ten lze zaslat aplikaci klávesami \path{CTRL+C}. Ještě před skončením jsou zaslány sesbírané statistiky na syslog server. Zobrazit si je můžeme stejně jako v~případě se zpracováním pcap souboru.
 
 \newpage
 
@@ -332,10 +332,10 @@ Aplikace běží až do obdržení signálu \path{SIGINT}, ten lze zaslat aplika
 
 \section{Závěr}
 
-Celý projekt se skládá z následujících zdrojových souborů \path{C++}: \path{main.cpp}, \path{arg_parser.cpp}, \path{arg_parser.h}, \path{pcap_parser.cpp}, \path{pcap_parser.h}, \path{dns_parser.cpp}, \path{dns_parser.h}, \path{syslog.cpp}, \path{syslog.h}, \path{utils.cpp}, \path{utils.h} a souboru pro překlad \path{Makefile}. To je celkem 2208 řádků kódu. Velikost výsledného binárního souboru \path{dns-export} je 182.3\,KiB. Dále dokumentace v sázecím systému \path{LaTeX}: \path{manual.pdf} a manuálové stránky ve značkovacím jazyce \path{troff}: \path{dns-export.1}.
+Celý projekt se skládá z~následujících zdrojových souborů \path{C++}: \path{main.cpp}, \path{arg_parser.cpp}, \path{arg_parser.h}, \path{pcap_parser.cpp}, \path{pcap_parser.h}, \path{dns_parser.cpp}, \path{dns_parser.h}, \path{syslog.cpp}, \path{syslog.h}, \path{utils.cpp}, \path{utils.h} a souboru pro překlad \path{Makefile}. To je celkem 2208 řádků kódu. Velikost výsledného binárního souboru \path{dns-export} je 182.3\,KiB. Dále dokumentace v~sázecím systému \path{LaTeX}: \path{manual.pdf} a manuálové stránky ve značkovacím jazyce \path{troff}: \path{dns-export.1}.
 \bigskip
 
-Práce na projektu byla bez pochyby velmi zajímavá a přínosná. Zdokonalil jsem se ve psaní v C++, poznal pcap knihovnu, na vlastní kůži viděl jak funguje TCP/IP zásobník, poměrně do detailů si nastudoval DNS, vyzkoušel si komunikaci se syslogem a napsal manuálovou stránku. Na druhou stranu musím zmínit, že časová náročnost projektu velmi přesahovala deklarovanu časovou zátěž v kartě předmětu. K čemu tu pak máme kreditový systém ECTS s cílem sjednocovat studijní zátěž vysokoškolského studia napříč EU. Takto přestřelená časová zátěž je pak pouze na úkor docházky na přednáškách, práce na projektech do jiných předmětů, či, nyní ve třetím ročníku, na bakalářské práci.
+Práce na projektu byla bez pochyby velmi zajímavá a přínosná. Zdokonalil jsem se ve psaní v~C++, poznal pcap knihovnu, na vlastní kůži viděl jak funguje TCP/IP zásobník, poměrně do detailů si nastudoval DNS, vyzkoušel si komunikaci se syslogem a napsal manuálovou stránku. Na druhou stranu musím zmínit, že časová náročnost projektu velmi přesahovala deklarovanu časovou zátěž v~kartě předmětu. K~čemu tu pak máme kreditový systém ECTS s~cílem sjednocovat studijní zátěž vysokoškolského studia napříč EU. Takto přestřelená časová zátěž je pak pouze na úkor docházky na přednáškách, práce na projektech do jiných předmětů, či, nyní ve třetím ročníku, na bakalářské práci.
 
 \newpage
 

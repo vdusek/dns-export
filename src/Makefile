@@ -12,6 +12,9 @@
 #   $ make clean        # Remove object files and deplist
 #   $ make clean-all    # Remove object files, deplist and binaries
 
+# Pack:
+#   $ tar -cvf xdusek27.tar *
+
 CPPC = g++
 CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap
 DEPS = dep.list
