@@ -16,7 +16,7 @@
 #   $ tar -cvf xdusek27.tar *
 
 CPPC = g++
-CPPFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -lpcap
+CPPFLAGS = -std=c++11 -Wall -Wextra -lpcap -g
 DEPS = dep.list
 SRC = main.cpp arg_parser.cpp utils.cpp pcap_parser.cpp dns_parser.cpp syslog.cpp
 OBJ = $(SRC:.cpp=.o)
@@ -35,7 +35,7 @@ exec: $(DEPS) $(EXEC)
 	$(CPPC) $(CPPFLAGS) -c $<
 
 $(DEPS): $(SRC)
-	$(CPPC) -MM $(SRC) > $(DEPS)
+	$(CPPC) -std=c++11 -MM $(SRC) > $(DEPS)
 
 -include $(DEPS)
 

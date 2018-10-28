@@ -58,7 +58,10 @@ PcapParser::PcapParser(string filter_exp):
 
 PcapParser::~PcapParser()
 {
-    pcap_close(handle);
+    if (handle != nullptr) {
+        pcap_close(handle);
+        handle = nullptr;
+    }
 }
 
 void PcapParser::parse_tcp()
