@@ -59,6 +59,16 @@ private:
     /**
      * Handle ethernet frame.
      */
+    static void ether_handle(u_char *packet);
+
+    /**
+     * Handle sll frame.
+     */
+    static void sll_handle(u_char *packet);
+
+    /**
+     * Handle ethernet frame.
+     */
     static void packet_handle(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet);
 
 public:

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pcap/pcap.h>
+#include <pcap/sll.h>
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
@@ -39,10 +40,12 @@ pcap_t *handle = nullptr;
 // Global instance of DnsParser because of static methods
 DnsParser dns_parser;
 
+// Frame type is global because of packet handler
+int frame_type;
+
 // Global constants just for this module
 const int SNAPLEN = 1;
 const int PROMISC = 1000;
-const u_int ETH_HDR_LEN = 14;
 const u_int IPV6_HDR_LEN = 40;
 const u_int UDP_HDR_LEN = 8;
 
@@ -173,14 +176,25 @@ void PcapParser::tcp_handle(u_char *packet, u_int offset)
     u_int dns_size;
     auto *tcp = reinterpret_cast<tcphdr *>(packet + offset);
 
+    int frame_hdr_len;
+    if (frame_type == DLT_EN10MB) {
+        frame_hdr_len = ETHER_HDR_LEN;
+    }
+    else if (frame_type == DLT_LINUX_SLL) {
+        frame_hdr_len = SLL_HDR_LEN;
+    }
+    else {
+        throw PcapException("internal error");
+    }
+
     // Calculate size of tcp segment
-    auto *eth = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
+    auto *eth = reinterpret_cast<ether_header *>(packet);
     if (ntohs(eth->ether_type) == ETHERTYPE_IP) {
-        auto ipv4 = reinterpret_cast<ip *>(packet + ETH_HDR_LEN);
+        auto ipv4 = reinterpret_cast<ip *>(packet + frame_hdr_len);
         dns_size = ntohs(ipv4->ip_len) - ipv4->ip_hl * 4;
     }
     else if (ntohs(eth->ether_type) == ETHERTYPE_IPV6) {
-        auto *ipv6 = reinterpret_cast<ip6_hdr *>(packet + ETH_HDR_LEN);
+        auto *ipv6 = reinterpret_cast<ip6_hdr *>(packet + frame_hdr_len);
         dns_size = ntohs(ipv6->ip6_plen);
     }
     else {
@@ -261,30 +275,77 @@ void PcapParser::ipv6_handle(u_char *packet, u_int offset)
     }
 }
 
+void PcapParser::ether_handle(u_char *packet)
+{
+    auto *eth = reinterpret_cast<ether_header *>(packet);
+
+    DEBUG_PRINT("    Destination MAC = " + string(ether_ntoa((const struct ether_addr *) &eth->ether_dhost)) + "\n");
+    DEBUG_PRINT("    Source MAC = " + string(ether_ntoa((const struct ether_addr *) &eth->ether_shost)) + "\n");
+
+    // IPv4 datagrams
+    if (ntohs(eth->ether_type) == ETHERTYPE_IP) {
+        ipv4_handle(packet, ETHER_HDR_LEN);
+    }
+    // IPv6 datagrams
+    else if (ntohs(eth->ether_type) == ETHERTYPE_IPV6) {
+        ipv6_handle(packet, ETHER_HDR_LEN);
+    }
+    // Other datagrams
+    else {
+        not_ipv4_ipv6_cnt++; // debug
+    }
+}
+
+void PcapParser::sll_handle(u_char *packet)
+{
+    auto *sll = reinterpret_cast<sll_header *>(packet);
+
+    DEBUG_PRINT("    Packet type = " + to_string(ntohs(sll->sll_pkttype)) + "\n");
+    DEBUG_PRINT("    Link-layer address type = " + to_string(ntohs(sll->sll_hatype)) + "\n");
+    DEBUG_PRINT("    Link-layer address length = " + to_string(ntohs(sll->sll_halen)) + "\n");
+
+    // IPv4 datagrams
+    if (ntohs(sll->sll_protocol) == ETHERTYPE_IP) {
+        ipv4_handle(packet, SLL_HDR_LEN);
+    }
+    // IPv6 datagrams
+    else if (ntohs(sll->sll_protocol) == ETHERTYPE_IPV6) {
+        ipv6_handle(packet, SLL_HDR_LEN);
+    }
+    // Other datagrams
+    else {
+        not_ipv4_ipv6_cnt++; // debug
+    }
+}
+
 void PcapParser::packet_handle(u_char *args, const pcap_pkthdr *packet_hdr, const u_char *packet)
 {
     (void) args; (void) packet_hdr; // Stop yelling at me!
     frame_cnt++; // debug
 
-    auto *eth = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
-
     DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
     DEBUG_PRINT("Frame no. " + to_string(frame_cnt) + "\n");
-    DEBUG_PRINT("Ethernet header\n");
-    DEBUG_PRINT("    Length = " + to_string(packet_hdr->len) + "\n");
-    DEBUG_PRINT("    Destination MAC = " + string(ether_ntoa((const struct ether_addr *) & eth->ether_dhost)) + "\n");
-    DEBUG_PRINT("    Source MAC = " + string(ether_ntoa((const struct ether_addr *) & eth->ether_shost)) + "\n");
 
-    // IPv4 datagrams
-    if (ntohs(eth->ether_type) == ETHERTYPE_IP) {
-        ipv4_handle(const_cast<u_char *>(packet), ETH_HDR_LEN);
+    // Ethernet frame
+    if (frame_type == DLT_EN10MB) {
+
+        DEBUG_PRINT("Ethernet frame\n");
+        DEBUG_PRINT("    Length = " + to_string(packet_hdr->len) + "\n");
+
+        ether_handle(const_cast<u_char *>(packet));
     }
-    // IPv6 datagrams
-    else if (ntohs(eth->ether_type) == ETHERTYPE_IPV6) {
-        ipv6_handle(const_cast<u_char *>(packet), ETH_HDR_LEN);
+    // SLL frame
+    else if (frame_type == DLT_LINUX_SLL) {
+
+        DEBUG_PRINT("SLL frame\n");
+        DEBUG_PRINT("    Length = " + to_string(packet_hdr->len) + "\n");
+
+        sll_handle(const_cast<u_char *>(packet));
     }
+    // Other frame
     else {
-        not_ipv4_ipv6_cnt++; // debug
+        DEBUG_PRINT("Other frame\n");
+        return;
     }
 }
 
@@ -316,6 +377,9 @@ void PcapParser::parse_resource()
     if (pcap_setfilter(handle, &m_compiled_filter) == PCAP_ERROR) {
         throw PcapException("Couldn't install filter " + m_filter_exp + "\n" + pcap_geterr(handle) + "\n");
     }
+
+    // Get type of the frame
+    frame_type = pcap_datalink(handle);
 
     // Read packets from the file in the infinite loop (count == 0)
     // Incoming packets are processed by function packet_handler()
@@ -349,6 +413,9 @@ void PcapParser::sniff_interface()
     if (pcap_setfilter(handle, &m_compiled_filter) == PCAP_ERROR) {
         throw PcapException("Couldn't install filter " + m_filter_exp + "\n" + pcap_geterr(handle) + "\n");
     }
+
+    // Get type of the frame
+    frame_type = pcap_datalink(handle);
 
     // Read packets from the interface in the infinite loop (count == 0)
     // Incoming packets are processed by function packet_handler()

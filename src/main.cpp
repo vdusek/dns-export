@@ -6,6 +6,10 @@
 // Date: 30/9/2018
 // File: main.cpp
 
+// ToDo:
+// - Better parse base64 field in NSSEC
+//     - source: https://renenyffenegger.ch/notes/development/Base64/Encoding-and-decoding-base-64-with-cpp
+
 #include <unistd.h>
 #include <vector>
 #include "utils.h"
