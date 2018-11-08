@@ -29,7 +29,7 @@
 	\begin{center}
 		\begin{figure}[htb]
 			\centering
-			\includegraphics[width=0.85\hsize]{fitlogo.pdf}
+			\includegraphics[width=0.85\hsize]{images/fitlogo.pdf}
 		\end{figure}
 		\vspace{\stretch{0.382}}
 		{\Huge Síťové aplikace a správa sítí} \\
@@ -80,7 +80,7 @@ Vrstva, která se stará o~přenos konkrétních aplikačních dat. (např. SSH,
 
 \begin{figure}[htp]
     \centering
-    \includegraphics[width=.55\textwidth]{layers_schema.png}\hfill
+    \includegraphics[width=.55\textwidth]{images/layers_schema.png}\hfill
     \caption{Schéma zapouzdření dat na vrstvách TCP/IP}
 \end{figure}
 
@@ -187,7 +187,7 @@ Pro zpracování argumentů příkazové řádky je využívána knihovna \path{
 Pro zachytávání provozu na síťovém rozhraní, či zpracovávání pcap souboru aplikace využívá funkce \path{pcap} knihovny. Ta také komunikaci vyfiltruje pouze na DNS komunikaci. Funkce \path{pcap_loop} iteruje přes veškeré vyfiltrované rámce. Každý z~nich je zpracováván ve statické metodě \path{packet_handle}. Zde je zpracování dále děleno. Nejprve na vrtsvě síťového rozhraní (network interface layer) podle typu rámce -- Ethernet, SSL. Poté na síťové vrstvě (network layer) podle typu datagramu -- \path{IPv4}, \path{IPv6}. Nakonec i podle typu packetu na vrstvě transportní (transport layer) -- \path{TCP}, \path{UDP}. Při \path{UDP} komunikaci je řízení rovnou předáváno modulu DnsParser. V~případě TCP komunikaci, jsou data ukládána do globálního bufferu (\path{vector}) a zpracována až v~případě nutnosti -- před odesláním na syslog server, či vypsáním na \path{STDOUT}. Je tomu tak z~důvodu fragmentace aplikačních dat DNS na transportní vrstvě.
 \bigskip
 
-Modul \path{DnsParser} pak sbírá už konkrétní informace. Tedy na jaké doménové jméno byl kladen dotaz, jaký typ dotazu byl požadován a konkrétní odpověď. Jsou podporovány následující DNS typy: A, AAAA, CNAME, DNSKEY, DS, MX, NS, NSEC, OPT, PTR, RRSIG, SOA, SPF a TXT. Ostaní typy jsou značeny jako \path{unknown_type} a \path{unknown_data}. Modul využívá různých implementovaných struktur pro ulehčení práce s~ukazateli. U~struktur je použit atribut \path{__attribute__((packed))}, aby nedocházelo k~jejich zarovnání (padding).
+Modul \path{DnsParser} pak sbírá už konkrétní informace. Tedy na jaké doménové jméno byl kladen dotaz, jaký typ dotazu byl požadován a konkrétní odpověď. Jsou podporovány následující DNS typy: A, AAAA, CNAME, DNSKEY, DS, MX, NS, NSEC, OPT, PTR, RRSIG, SOA, SPF a TXT. Ostaní typy jsou značeny jako \path{unknown_type} a jejich data jako \path{unknown_data}. Modul využívá různých implementovaných struktur pro ulehčení práce s~ukazateli. U~struktur je použit atribut \path{__attribute__((packed))}, aby nedocházelo k~jejich zarovnání (padding).
 \bigskip
 
 Komunikace se syslog serverem je řešeno pomocí knihovny \path{sys/socket.h}. Nejprve je navázáno komunikace se serverem a poté jsou zprávy (logs) postupně odesílány. Před skončením aplikace je spojení ukončeno a socket uzavřen.

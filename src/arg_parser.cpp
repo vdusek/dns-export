@@ -7,10 +7,8 @@
 // File: arg_parser.cpp
 
 #include <getopt.h>
-
 #include <iostream>
 #include <string>
-
 #include "utils.h"
 #include "arg_parser.h"
 

@@ -6,9 +6,8 @@
 // Date: 30/9/2018
 // File: main.cpp
 
-// ToDo:
-// - Better parse base64 field in NSSEC
-//     - source: https://renenyffenegger.ch/notes/development/Base64/Encoding-and-decoding-base-64-with-cpp
+// Better parse base64 field in NSSEC:
+//     - https://renenyffenegger.ch/notes/development/Base64/Encoding-and-decoding-base-64-with-cpp
 
 #include <unistd.h>
 #include <vector>
@@ -27,6 +26,23 @@ ArgParser arg_parser;
 
 // Global instance of PcapParser because of signal_handler
 PcapParser pcap_parser(FILTER_EXP);
+
+// Print debug summary stats to stderr
+void print_debug_summary()
+{
+    DEBUG_PRINT("\n");
+    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+    DEBUG_PRINT("Summary:\n");
+    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
+    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
+    DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
+    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
+    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
+    DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
+    DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
+    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n\n");
+    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+}
 
 // Connect to syslog if not connected and send data from result_map to syslog server.
 void send_stats_to_syslog()
@@ -50,7 +66,7 @@ void send_stats_to_syslog()
     }
 }
 
-// Print data from result_map on stdout.
+// Print data from result_map to stdout.
 void print_stats_on_stdout()
 {
     try {
@@ -82,18 +98,7 @@ void signal_handler(int signal)
             pcap_breakloop(handle);
             send_stats_to_syslog();
             syslog.disconnect();
-            DEBUG_PRINT("\n");
-            DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
-            DEBUG_PRINT("Summary:\n");
-            DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
-            DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
-            DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
-            DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
-            DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
-            DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
-            DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
-            DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n\n");
-            DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
+            print_debug_summary();
             exit(0);
 
         default:
@@ -160,18 +165,7 @@ int main(int argc, char **argv)
         syslog.disconnect();
     }
 
-    DEBUG_PRINT("------------------------------------------------------------------------------\n\n");
-    DEBUG_PRINT("Summary:\n");
-    DEBUG_PRINT("    Number of captured frames = " + to_string(frame_cnt) + "\n");
-    DEBUG_PRINT("    Number of IPv4 datagrams = " + to_string(ipv4_cnt) + "\n");
-    DEBUG_PRINT("    Number of IPv6 datagrams = " + to_string(ipv6_cnt) + "\n");
-    DEBUG_PRINT("    Number of other datagrams = " + to_string(not_ipv4_ipv6_cnt) + "\n");
-    DEBUG_PRINT("    Number of UDP packets = " + to_string(udp_cnt) + "\n");
-    DEBUG_PRINT("    Number of TCP packets = " + to_string(tcp_cnt) + "\n");
-    DEBUG_PRINT("    Number of correct DNS responses = " + to_string(dns_cnt) + "\n");
-    DEBUG_PRINT("    Number of DNS answers = " + to_string(dns_ans_cnt) + "\n");
-    DEBUG_PRINT("\n------------------------------------------------------------------------------\n\n");
+    print_debug_summary();
 
     return EXIT_SUCCESS;
 }
-

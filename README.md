@@ -1,5 +1,11 @@
 # ISA projekt
 
+## Manual page
+```
+$ man -l man/dns-export.1
+```
+![alt text](https://github.com/vdusek/isa/blob/master/man/man.png)
+
 
 ## Libpcap
 
