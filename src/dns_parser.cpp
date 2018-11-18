@@ -147,7 +147,6 @@ void DnsParser::parse(u_char *packet)
                 type = "SOA";
                 break;
 
-            // ToDo: test this case, implement parse_spf
             case DNS_SPF:
                 data = parse_record_txt_spf(dns);
                 type = "SPF";
@@ -469,8 +468,6 @@ string DnsParser::parse_record_ptr(u_char *dns_hdr, u_char *dns)
     return read_domain_name(dns_hdr, dns, &shift);
 }
 
-// ToDo:
-//   - RRSIG results are not 100% correct, filter and debug it
 string DnsParser::parse_record_rrsig(u_char *dns_hdr, u_char *dns, u_int data_len)
 {
     string data;

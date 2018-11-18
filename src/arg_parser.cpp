@@ -19,7 +19,7 @@ ArgParser::ArgParser():
     m_argv(nullptr),
     m_resource(""),
     m_interface(""),
-    m_server(""),
+    m_server("localhost"),
     m_timeout(60)
 {
 }
@@ -159,11 +159,6 @@ void ArgParser::parse()
 
     if (!r_set && !i_set) {
         throw ArgumentException("interface or resource have to be set\n"
-            "Try 'dns-export --help' for more information\n");
-    }
-
-    if (!s_set) {
-        throw ArgumentException("syslog server has to be set\n"
             "Try 'dns-export --help' for more information\n");
     }
 }
