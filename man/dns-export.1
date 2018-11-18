@@ -7,7 +7,7 @@ dns-export \- export statistics of dns traffic to syslog server
 
 .SH SYNOPSIS
 .B dns-export
-[\fB\-r\fR \fIRESOURCE\fR | \fB\-i\fR \fIINTERFACE\fR] [\fB\-t\fR \fITIMEOUT\fR] \fB\-s\fR \fISERVER\fR [\fB\-h\fR]
+[\fB\-r\fR \fIRESOURCE\fR | \fB\-i\fR \fIINTERFACE\fR] [\fB\-t\fR \fITIMEOUT\fR] [\fB\-s\fR \fISERVER\fR] [\fB\-h\fR]
 
 
 .SH DESCRIPTION
@@ -30,7 +30,7 @@ Statistics will be sent to syslog server every TIMEOUT seconds. Default is 60.
 
 .TP
 \fB\-s\fR \fISERVER\fR, \fB\-\-server\fR=\fISERVER\fR
-Address of syslog server where statistics will be sent.
+Address of syslog server where statistics will be sent. Default is localhost.
 
 .TP
 \fB\-h\fR, \fB\-\-help\fR

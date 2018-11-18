@@ -13,7 +13,11 @@
 #   $ make clean-all    # Remove object files, deplist and binaries
 
 # Pack:
-#   $ tar -cvf xdusek27.tar *
+#   $ tar -cvf xdusek27.tar arg_parser.cpp dns_parser.cpp pcap_parser.h utils.cpp
+#                           arg_parser.h dns_parser.h syslog.cpp utils.h main.cpp
+#                           pcap_parser.cpp syslog.h Makefile manual.pdf dns-export.1
+# Unpack:
+#   $ tar xvf xdusek27.tar
 
 CPPC = g++
 CPPFLAGS = -std=c++11 -Wall -Wextra -lpcap
