@@ -1,13 +1,45 @@
-# ISA projekt
+# dns-export
 
-## Manual page
+<!----------------------------------------------------------------------------->
+
+- BUT FIT
+- Network Applications and Network Administration (ISA)
+- Programming network service
+
+<!----------------------------------------------------------------------------->
+
+## Reference
+
+> [**Assignment**](assignment/assignment.pdf)<br>
+> — Description of assignment and its variant (Czech)
+
+> [**Documentation**](doc/doc.pdf)<br>
+> — Documentation of the project solution (Czech)
+
+> [**Manual**](man/man.png)<br>
+> — Linux standard manual page
+
+<!----------------------------------------------------------------------------->
+
+## Launch
+
+### dns-export
+```
+$ cd src/
+$ make
+$ ./dns-export [-r RESOURCE | -i INTERFACE] [-t TIMEOUT] [-s SERVER] [-h]
+```
+
+### Manual page
 ```
 $ man -l man/dns-export.1
 ```
-![alt text](https://github.com/vdusek/isa/blob/master/man/man.png)
 
+<!----------------------------------------------------------------------------->
 
-## Libpcap
+## Dependencies
+
+### Libpcap
 
 #### Debian, Ubuntu
 ```
@@ -24,8 +56,7 @@ $ dnf install libpcap-devel
 $ g++ source_files.cpp -lpcap
 ```
 
-
-## Syslog
+### Syslog
 
 #### Install rsyslog
 ```
@@ -54,7 +85,7 @@ input(type="imudp" port="514")
 
 #### Restart
 ```
-# service rsyslog restart 
+# service rsyslog restart
 ```
 
 #### Look at syslog messages
@@ -62,7 +93,7 @@ input(type="imudp" port="514")
 # cat /var/log/messages
 ```
 
-
+<!----------------------------------------------------------------------------->
 
 ## Sources
 
@@ -77,7 +108,6 @@ input(type="imudp" port="514")
 - http://www.keyboardbanger.com/dns-message-format-name-compression/
 - https://access.redhat.com/solutions/54363
 
-
 ### Documentation
 
 #### Posix
@@ -90,7 +120,6 @@ input(type="imudp" port="514")
 
 #### Manual pages
 - https://liw.fi/manpages/
-
 
 ### Standards
 
@@ -107,7 +136,6 @@ input(type="imudp" port="514")
 - https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml
 - https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
 
-
 ### Stackoverflow
 - https://stackoverflow.com/questions/7565300/identifying-dns-packets
 - https://stackoverflow.com/questions/1784136/simple-signals-c-programming-and-alarm-function
@@ -117,15 +145,12 @@ input(type="imudp" port="514")
 - https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
 - https://stackoverflow.com/questions/361363/how-to-measure-time-in-milliseconds-using-ansi-c
 
-
 ### Wikipedia
 - https://en.wikipedia.org/wiki/Domain_Name_System
 - https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions
 - https://en.wikipedia.org/wiki/List_of_DNS_record_types
 
-
 ### C, C++ libraries
 - https://en.wikipedia.org/wiki/C%2B%2B_Standard_Library
 - https://en.wikipedia.org/wiki/C_standard_library
 - https://en.wikipedia.org/wiki/C_POSIX_library
-
